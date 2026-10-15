@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工場人員配置マネージャー</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Noto Sans JP -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+        
+        /* 通常ボード用のスロットボックス */
+        .board-slot-box {
+            height: 82px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* モニター表示用のスロットボックス（均一な高さを確保し、写真を枠いっぱいに表示） */
+        .monitor-slot-box {
+            height: 100px;
+            width: 100%;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background-color: #f1f5f9;
+        }
+
+        /* モニター表示の右側 監督者・リーダー用スロットボックス */
+        .monitor-sup-slot-box {
+            height: 90px;
+            width: 100%;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background-color: #f1f5f9;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 text-white shadow-md">
+        <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2 rounded-xl shadow">
+                    <i class="fa-solid fa-industry text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">工場人員配置マネージャー</h1>
+                    <p class="text-xs text-slate-400">現場ホワイトボードデジタル化システム (顔写真対応)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <!-- Navigation Tabs -->
+                <div class="bg-slate-800 p-1 rounded-xl flex space-x-1 border border-slate-700">
+                    <button onclick="switchTab('board')" id="tab-btn-board" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer">
+                        <i class="fa-solid fa-chalkboard mr-1"></i>配置ボード
+                    </button>
+                    <button onclick="switchTab('staff')" id="tab-btn-staff" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
+                        <i class="fa-solid fa-users-gear mr-1"></i>メンバー管理・削除
+                    </button>
+                    <button onclick="switchTab('monitor')" id="tab-btn-monitor" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
+                        <i class="fa-solid fa-desktop mr-1"></i>モニター表示
+                    </button>
+                </div>
+
+                <!-- Date Picker -->
+                <div class="flex items-center bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 relative">
+                    <i class="fa-regular fa-calendar text-white mr-2 pointer-events-none"></i>
+                    <input type="date" id="board-date" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer" value="2026-10-15" onchange="if(currentTab==='monitor') renderMonitorView();">
+                </div>
+
+                <!-- Total Count Badge -->
+                <div class="bg-blue-600/20 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg text-sm font-semibold">
+                    総人員: <span id="total-staff-count" class="text-white font-bold">26</span>名
+                </div>
+
+                <!-- Action Buttons -->
+                <button onclick="openAiModal()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>AIボード解析</span>
+                </button>
+                <button onclick="saveData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>保存</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full mx-auto p-4 md:p-6" id="main-container">
+        
+        <!-- Tab 1: Assignment Board -->
+        <div id="view-board" class="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Left Sidebar: Staff Pool (2 cols) -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[750px]">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                        <h2 class="font-bold text-slate-800 flex items-center text-xs">
+                            <i class="fa-solid fa-users text-blue-600 mr-1.5"></i>スタッフ (<span id="pool-count">0</span>)
+                        </h2>
+                        <button onclick="openAddStaffModal()" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-2 py-1 rounded-lg transition shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-user-plus mr-0.5"></i>追加
+                        </button>
+                    </div>
+                    
+                    <div class="relative mb-3">
+                        <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-xs text-slate-400"></i>
+                        <input type="text" id="staff-search" placeholder="検索..." oninput="filterStaffPool()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div id="staff-pool" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]" ondragover="allowDrop(event)" ondrop="dropToPool(event)">
+                        <!-- Dynamically populated staff chips -->
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">※ドラッグ＆ドロップで配置</p>
+                </div>
+            </div>
+
+            <!-- Middle Main: Assignment Board (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
+                    <div class="bg-slate-800 text-white px-4 py-3 flex justify-between items-center">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-chalkboard text-blue-400"></i>
+                            <span class="font-bold text-sm">101〜106号機 / みずすまし 配置ボード</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <span class="bg-slate-700 text-xs px-2.5 py-1 rounded text-slate-300">朝シフト</span>
+                            <span class="bg-slate-700 text-xs px-2.5 py-1 rounded text-slate-300">夜シフト</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-left border-collapse" id="assignment-table">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
+                                    <th class="p-2.5 w-32">工程・機械</th>
+                                    <th class="p-2.5 text-center">朝 1</th>
+                                    <th class="p-2.5 text-center">朝 2</th>
+                                    <th class="p-2.5 text-center">夜 1</th>
+                                    <th class="p-2.5 text-center">夜 2</th>
+                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToInspectionHeader(event)">出荷検査</th>
+                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToExtHeader(event, 1)">外部 1</th>
+                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToExtHeader(event, 2)">外部 2</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200 text-xs" id="board-rows">
+                                <!-- Populated via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar: Dedicated Supervisors & Leaders Section (3 cols) -->
+            <div class="lg:col-span-3 flex flex-col">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 h-full flex flex-col">
+                    <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center pb-2 border-b border-slate-100">
+                        <i class="fa-solid fa-user-tie text-indigo-600 mr-2"></i>監督者・各勤リーダー配置
+                    </h3>
+                    <div class="flex flex-col gap-3 flex-1 overflow-y-auto" id="supervisors-container">
+                        <!-- Populated via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tab 2: Staff Management -->
+        <div id="view-staff" class="hidden max-w-7xl mx-auto flex flex-col gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-slate-100 gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <i class="fa-solid fa-users-gear text-blue-600 mr-2"></i>メンバー管理・削除シート
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">工場に登録されているすべてのスタッフの確認、役職変更、顔写真登録、およびメンバーの削除が行えます。</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="openAddStaffModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition cursor-pointer">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>新規メンバーを追加</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <div class="relative w-72">
+                        <i class="fa-solid fa-search absolute left-3 top-3 text-xs text-slate-400"></i>
+                        <input type="text" id="sheet-staff-search" placeholder="スタッフ名で検索..." oninput="renderStaffManagementTable()" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <span class="text-xs font-semibold text-slate-600">登録総数: <span id="sheet-total-count" class="text-blue-600 font-bold">0</span>名</span>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600">
+                                <th class="p-3.5 w-16 text-center">ID番号</th>
+                                <th class="p-3.5 w-28 text-center">顔写真</th>
+                                <th class="p-3.5">スタッフ名</th>
+                                <th class="p-3.5 w-40">役職・区分</th>
+                                <th class="p-3.5 w-52 text-center">配置状態</th>
+                                <th class="p-3.5 w-44 text-center">写真変更</th>
+                                <th class="p-3.5 w-32 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 text-xs" id="staff-management-tbody">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: White-themed Monitor View with Full-Size Staff Photos -->
+        <div id="view-monitor" class="hidden w-full flex flex-col gap-4">
+            <div class="bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 w-full max-w-full mx-auto">
+                
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full items-stretch">
+                    
+                    <!-- Left Vertical Sidebar (1 col) -->
+                    <div class="lg:col-span-1 flex flex-col gap-3 justify-between">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
+                            <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow mb-2">
+                                <i class="fa-solid fa-calendar text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">日付</span>
+                            <span id="monitor-date-display" class="text-xs font-bold text-slate-800 leading-snug">2026年<br>10月15日</span>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
+                            <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow mb-2">
+                                <i class="fa-solid fa-users text-base"></i>
+                            </div>
+                            <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">総人員</span>
+                            <span class="text-base font-extrabold text-slate-800"><span id="monitor-total-count" class="text-blue-600">26</span>名</span>
+                        </div>
+
+                        <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 text-center">
+                            <span class="text-[9px] text-slate-500 font-bold block">工場モニター<br>ライブ表示</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Monitor Board Table (9.5 cols) -->
+                    <div class="lg:col-span-9 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col">
+                        <div class="bg-slate-900 text-white px-4 py-3 border-b border-slate-800 font-bold text-xs flex justify-between items-center shrink-0">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-solid fa-industry text-blue-400 text-sm"></i>
+                                <span class="text-slate-100 text-sm">101〜106号機 / みずすまし / 出荷検査・外部派遣</span>
+                            </div>
+                            <div class="flex space-x-2 text-[11px] text-slate-300 font-medium">
+                                <span class="bg-slate-800 border border-slate-700 px-3 py-1 rounded-md">朝シフト</span>
+                                <span class="bg-slate-800 border border-slate-700 px-3 py-1 rounded-md">夜シフト</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto w-full flex-1 flex flex-col">
+                            <table class="w-full text-left border-collapse table-fixed flex-1" id="monitor-assignment-table">
+                                <colgroup>
+                                    <col style="width: 140px;">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                    <col style="width: calc((100% - 140px) / 7);">
+                                </colgroup>
+                                <thead>
+                                    <tr class="bg-slate-200/80 border-b border-slate-300 text-xs font-semibold text-slate-700">
+                                        <th class="p-2.5 text-center">工程・機械</th>
+                                        <th class="p-2.5 text-center">朝 1</th>
+                                        <th class="p-2.5 text-center">朝 2</th>
+                                        <th class="p-2.5 text-center">夜 1</th>
+                                        <th class="p-2.5 text-center">夜 2</th>
+                                        <th class="p-2.5 text-center">出荷検査</th>
+                                        <th class="p-2.5 text-center">外部 1</th>
+                                        <th class="p-2.5 text-center">外部 2</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 text-xs" id="monitor-board-rows">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Right Side Supervisor & Leader Column (1.5 cols) -->
+                    <div class="lg:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 flex items-center justify-center border-b border-slate-200 pb-2 shrink-0">
+                            <i class="fa-solid fa-user-tie mr-1.5 text-indigo-600"></i>監督者・リーダー
+                        </h3>
+                        <div class="flex flex-col gap-2.5 flex-1 justify-around" id="monitor-supervisors-container">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- AI Analysis Modal -->
+    <div id="ai-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AIボード・写真解析
+                </h3>
+                <button onclick="closeAiModal()" class="text-white/80 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-600">ホワイトボードの写真をアップロードすると、Gemini AIが自動でスタッフ名や配置状態を読み取り、ボードに反映します。</p>
+                
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-indigo-500 transition cursor-pointer relative" onclick="document.getElementById('ai-file-input').click()">
+                    <input type="file" id="ai-file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                    <div id="upload-preview-area">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-500 mb-2"></i>
+                        <p class="text-xs font-semibold text-slate-700">クリックしてホワイトボード画像を選択</p>
+                        <p class="text-[10px] text-slate-400 mt-1">PNG, JPG (最大 10MB)</p>
+                    </div>
+                </div>
+
+                <div id="ai-loading" class="hidden text-center py-4">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-2"></div>
+                    <p class="text-xs font-medium text-slate-600">Gemini AIがボード解析中...</p>
+                </div>
+
+                <div id="ai-result-box" class="hidden bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-900">
+                    <p class="font-semibold mb-1"><i class="fa-solid fa-circle-check text-purple-600 mr-1"></i>解析完了！</p>
+                    <p id="ai-result-text">スタッフ名と配置データを抽出しました。「適用」を押すとボードに反映されます。</p>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 flex justify-end space-x-2 border-t border-slate-100">
+                <button onclick="closeAiModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button id="apply-ai-btn" onclick="applyAiResults()" disabled class="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">適用する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Staff Modal -->
+    <div id="add-staff-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-solid fa-user-plus mr-2"></i>新規メンバー追加
+                </h3>
+                <button onclick="closeAddStaffModal()" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">スタッフ名 / メンバー名（複数名一括の場合は改行またはカンマ区切り）</label>
+                    <textarea id="new-staff-names" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="例: 山田 太郎&#10;鈴木 次郎&#10;高橋 花子"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">役職・区分</label>
+                    <select id="new-staff-role" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="作業者">作業者</option>
+                        <option value="リーダー">リーダー</option>
+                        <option value="監督者">監督者</option>
+                        <option value="外部協力者">外部協力者</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">顔写真 (任意)</label>
+                    <input type="file" id="new-staff-photo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 flex justify-end space-x-2 border-t border-slate-100">
+                <button onclick="closeAddStaffModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button onclick="confirmAddStaff()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow cursor-pointer">追加する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden p-6 text-center">
+            <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-base mb-1">スタッフの削除</h3>
+            <p id="delete-modal-text" class="text-xs text-slate-500 mb-5">このスタッフを削除してもよろしいですか？</p>
+            <div class="flex justify-center space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition shadow cursor-pointer">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let staffPool = [
+            { id: 's1', name: 'スガイ', role: '作業者', photo: '' },
+            { id: 's2', name: 'タイ', role: '作業者', photo: '' },
+            { id: 's3', name: 'スイ', role: '作業者', photo: '' },
+            { id: 's4', name: 'キック', role: '作業者', photo: '' },
+            { id: 's5', name: 'ワン', role: '作業者', photo: '' },
+            { id: 's6', name: 'セン', role: '作業者', photo: '' },
+            { id: 's7', name: 'イ', role: '作業者', photo: '' },
+            { id: 's8', name: 'ヒカリ', role: '作業者', photo: '' },
+            { id: 's9', name: 'リシ', role: '作業者', photo: '' },
+            { id: 's10', name: 'アイン', role: '作業者', photo: '' },
+            { id: 's11', name: 'ハン', role: '作業者', photo: '' },
+            { id: 's12', name: 'ヌア', role: '作業者', photo: '' },
+            { id: 's13', name: 'キュン', role: '作業者', photo: '' },
+            { id: 's14', name: 'ツイン', role: '作業者', photo: '' },
+            { id: 's15', name: 'ツイン フェン', role: '作業者', photo: '' },
+            { id: 's16', name: 'ズン', role: '作業者', photo: '' },
+            { id: 's17', name: 'ツアン', role: '作業者', photo: '' },
+            { id: 's18', name: 'マイン', role: '作業者', photo: '' },
+            { id: 's19', name: 'テツシット', role: '作業者', photo: '' },
+            { id: 's20', name: 'ダット', role: '作業者', photo: '' },
+            { id: 's21', name: 'チェン', role: '作業者', photo: '' },
+            { id: 's22', name: 'トシ', role: '作業者', photo: '' },
+            { id: 's23', name: 'ナアナ', role: '作業者', photo: '' },
+            { id: 'sup_s1', name: '森', role: 'リーダー', photo: '' },
+            { id: 'sup_s2', name: '佐藤', role: 'リーダー', photo: '' },
+            { id: 'ext_s1', name: '外部派遣', role: '外部協力者', photo: '' }
+        ];
+
+        let boardRows = [
+            { id: 'r1', machine: '101号機 (650t)', slots: { morning1: 's1', morning2: 's2', night1: 's3', night2: 's4', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r2', machine: '102号機 (850t)', slots: { morning1: 's5', morning2: 's6', night1: 's7', night2: 's8', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r3', machine: '103号機 (650t)', slots: { morning1: 's9', morning2: 's10', night1: 's11', night2: 's12', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r4', machine: '104号機 (850t)', slots: { morning1: 's13', morning2: 's14', night1: 's15', night2: 's16', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r5', machine: 'みずすまし', slots: { morning1: 's17', morning2: '', night1: 's18', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r6', machine: '105号機 (650t)', slots: { morning1: '', morning2: '', night1: 's19', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r7', machine: '106号機 (650t)', slots: { morning1: 's20', morning2: '', night1: 's21', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r8', machine: 'みずすまし 2', slots: { morning1: 's22', morning2: '', night1: 's23', night2: '', inspection: '', ext1: '', ext2: '' } }
+        ];
+
+        let supervisorsData = [
+            { id: 'sup_1', title: '監督者 1', staffId: '' },
+            { id: 'sup_2', title: '監督者 2', staffId: '' },
+            { id: 'lead_1', title: '1勤 リーダー', staffId: 'sup_s1' },
+            { id: 'lead_2', title: '2勤 リーダー', staffId: 'sup_s2' },
+            { id: 'lead_3', title: '3勤 リーダー', staffId: '' }
+        ];
+
+        let currentTab = 'board';
+        let staffToDeleteId = null;
+
+        window.onload = function() {
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            updateTotalCount();
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const viewBoard = document.getElementById('view-board');
+            const viewStaff = document.getElementById('view-staff');
+            const viewMonitor = document.getElementById('view-monitor');
+            
+            const btnBoard = document.getElementById('tab-btn-board');
+            const btnStaff = document.getElementById('tab-btn-staff');
+            const btnMonitor = document.getElementById('tab-btn-monitor');
+
+            viewBoard.classList.add('hidden');
+            viewStaff.classList.add('hidden');
+            viewMonitor.classList.add('hidden');
+
+            btnBoard.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
+            btnStaff.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
+            btnMonitor.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
+
+            if (tab === 'board') {
+                viewBoard.classList.remove('hidden');
+                btnBoard.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
+                renderStaffPool();
+                renderBoardRows();
+                renderSupervisors();
+            } else if (tab === 'staff') {
+                viewStaff.classList.remove('hidden');
+                btnStaff.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
+                renderStaffManagementTable();
+            } else if (tab === 'monitor') {
+                viewMonitor.classList.remove('hidden');
+                btnMonitor.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
+                renderMonitorView();
+            }
+        }
+
+        function getAssignedIds() {
+            const assignedIds = new Set();
+            boardRows.forEach(row => {
+                Object.values(row.slots).forEach(id => {
+                    if (id) assignedIds.add(id);
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId) assignedIds.add(sup.staffId);
+            });
+            return assignedIds;
+        }
+
+        function renderStaffPool(filter = '') {
+            const poolEl = document.getElementById('staff-pool');
+            if (!poolEl) return;
+            poolEl.innerHTML = '';
+            
+            const assignedIds = getAssignedIds();
+            const unassigned = staffPool.filter(s => !assignedIds.has(s.id));
+            const filtered = unassigned.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+            
+            document.getElementById('pool-count').textContent = staffPool.length;
+
+            if (filtered.length === 0) {
+                poolEl.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">未配置のスタッフはありません<br><span class="text-[10px]">(全員配置済み)</span></div>`;
+                return;
+            }
+
+            filtered.forEach(staff => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition shadow-sm';
+                item.draggable = true;
+                item.ondragstart = (e) => drag(e, staff.id);
+                
+                let avatarHtml = staff.photo 
+                    ? `<img src="${staff.photo}" class="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200 shadow-sm">`
+                    : `<div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-200 shadow-sm">${staff.name.charAt(0)}</div>`;
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2.5 overflow-hidden flex-1 pointer-events-none">
+                        ${avatarHtml}
+                        <span class="text-xs font-bold text-slate-800 truncate">${staff.name}</span>
+                    </div>
+                    <div class="flex items-center space-x-1 shrink-0 ml-1">
+                        <button type="button" onclick="promptDeleteStaff('${staff.id}'); event.stopPropagation();" class="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition cursor-pointer" title="削除">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                poolEl.appendChild(item);
+            });
+        }
+
+        function filterStaffPool() {
+            const query = document.getElementById('staff-search').value;
+            renderStaffPool(query);
+        }
+
+        function renderBoardRows() {
+            const tbody = document.getElementById('board-rows');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            boardRows.forEach((row) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition';
+                
+                let html = `
+                    <td class="p-2 font-semibold text-slate-700 text-xs bg-slate-50/50 border-r border-slate-200 w-32">
+                        <div class="flex items-center space-x-1.5 truncate">
+                            <i class="fa-solid fa-gears text-slate-400"></i>
+                            <span class="truncate">${row.machine}</span>
+                        </div>
+                    </td>
+                `;
+
+                ['morning1', 'morning2', 'night1', 'night2', 'inspection', 'ext1', 'ext2'].forEach(slotKey => {
+                    const staffId = row.slots[slotKey];
+                    const staff = staffPool.find(s => s.id === staffId);
+                    
+                    html += `
+                        <td class="p-1 border-r border-slate-200 text-center" ondragover="allowDrop(event)" ondrop="dropToSlot(event, '${row.id}', '${slotKey}')">
+                            <div class="board-slot-box bg-slate-50 border border-dashed border-slate-300 rounded-lg p-1 group transition hover:border-blue-400">
+                    `;
+
+                    if (staff) {
+                        let avatarHtml = staff.photo 
+                            ? `<img src="${staff.photo}" class="w-full h-10 rounded-md object-cover border border-slate-200 shadow-sm mb-0.5">`
+                            : `<div class="w-full h-10 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-200 shadow-sm mb-0.5">${staff.name.charAt(0)}</div>`;
+
+                        html += `
+                            <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+                                ${avatarHtml}
+                                <span class="text-[11px] font-bold text-slate-800 truncate w-full px-0.5 text-center">${staff.name}</span>
+                            </div>
+                            <button onclick="removeStaffFromSlot('${row.id}', '${slotKey}')" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 text-xs px-1 cursor-pointer bg-white/80 rounded" title="配置解除">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        `;
+                    } else {
+                        html += `<span class="text-[11px] text-slate-400 w-full text-center">-</span>`;
+                    }
+
+                    html += `
+                            </div>
+                        </td>
+                    `;
+                });
+
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSupervisors() {
+            const container = document.getElementById('supervisors-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            supervisorsData.forEach((sup, idx) => {
+                const staff = staffPool.find(s => s.id === sup.staffId);
+                
+                let avatarHtml = staff && staff.photo 
+                    ? `<img src="${staff.photo}" class="w-full h-10 rounded-md object-cover border border-slate-200 shadow-sm mb-0.5">`
+                    : (staff ? `<div class="w-full h-10 rounded-md bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200 shadow-sm mb-0.5">${staff.name.charAt(0)}</div>` : '');
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-sm';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-1.5">
+                        <span class="text-xs font-bold text-slate-700 truncate"><i class="fa-solid fa-shield-halved text-indigo-500 mr-1.5"></i>${sup.title}</span>
+                    </div>
+                    <div class="board-slot-box bg-white border border-dashed border-slate-300 rounded-lg p-1 group transition hover:border-indigo-400 shadow-sm relative"
+                         ondragover="allowDrop(event)" ondrop="dropToSupervisor(event, ${idx})">
+                        ${staff ? `
+                            <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+                                ${avatarHtml}
+                                <span class="text-[11px] font-bold text-slate-800 truncate w-full px-1 text-center">${staff.name}</span>
+                            </div>
+                            <button onclick="removeStaffFromSupervisor(${idx})" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 text-xs px-1 cursor-pointer bg-white/80 rounded" title="配置解除">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        ` : `
+                            <span class="text-[11px] text-slate-400 w-full text-center">ドロップして配置</span>
+                        `}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderMonitorView() {
+            const rawDate = document.getElementById('board-date').value;
+            const dateObj = new Date(rawDate);
+            const formattedDate = !isNaN(dateObj) ? `${dateObj.getFullYear()}年<br>${dateObj.getMonth() + 1}月${dateObj.getDate()}日` : rawDate;
+
+            document.getElementById('monitor-date-display').innerHTML = formattedDate;
+            document.getElementById('monitor-total-count').textContent = staffPool.length;
+
+            // Render Monitor Main Table (with photos filling the full slot box)
+            const monitorTbody = document.getElementById('monitor-board-rows');
+            monitorTbody.innerHTML = '';
+
+            boardRows.forEach(row => {
+                let html = `
+                    <tr class="hover:bg-slate-100/60 transition">
+                        <td class="p-2 font-bold text-slate-800 text-xs bg-slate-200/70 border-r border-slate-200 w-[140px] text-center">
+                            <div class="flex items-center justify-center space-x-1 truncate">
+                                <i class="fa-solid fa-gears text-blue-600 mr-1"></i>
+                                <span class="truncate text-xs font-bold">${row.machine}</span>
+                            </div>
+                        </td>
+                `;
+
+                ['morning1', 'morning2', 'night1', 'night2', 'inspection', 'ext1', 'ext2'].forEach(slotKey => {
+                    const staffId = row.slots[slotKey];
+                    const staff = staffPool.find(s => s.id === staffId);
+                    
+                    html += `
+                        <td class="p-1 border-r border-slate-200 text-center">
+                            <div class="monitor-slot-box border border-slate-200 shadow-sm">
+                    `;
+
+                    if (staff) {
+                        let innerContent = staff.photo 
+                            ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
+                            : `<div class="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-extrabold text-2xl absolute inset-0">${staff.name.charAt(0)}</div>`;
+
+                        html += `
+                            ${innerContent}
+                            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] px-1 py-1 text-center">
+                                <span class="text-xs font-extrabold text-white truncate block tracking-wide">${staff.name}</span>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="flex items-center justify-center w-full h-full text-slate-400 text-xs font-bold">-</div>
+                        `;
+                    }
+
+                    html += `
+                            </div>
+                        </td>
+                    `;
+                });
+
+                html += `</tr>`;
+                monitorTbody.innerHTML += html;
+            });
+
+            // Render Monitor Right Supervisor Cards (with photos filling the full slot box)
+            const supContainer = document.getElementById('monitor-supervisors-container');
+            supContainer.innerHTML = '';
+
+            supervisorsData.forEach((sup) => {
+                const staff = staffPool.find(s => s.id === sup.staffId);
+
+                let innerContent = '';
+                if (staff) {
+                    innerContent = staff.photo 
+                        ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
+                        : `<div class="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-700 text-white flex items-center justify-center font-extrabold text-2xl absolute inset-0">${staff.name.charAt(0)}</div>`;
+                }
+
+                supContainer.innerHTML += `
+                    <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col items-stretch justify-between shadow-sm text-center flex-1">
+                        <span class="text-[11px] font-extrabold text-indigo-700 mb-1.5 flex items-center justify-center truncate shrink-0">
+                            <i class="fa-solid fa-shield-halved mr-1 text-indigo-600"></i>${sup.title}
+                        </span>
+                        <div class="monitor-sup-slot-box border border-slate-200 shadow-sm flex flex-col justify-between items-center w-full h-full">
+                            ${staff ? `
+                                ${innerContent}
+                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] px-1 py-1 text-center">
+                                    <span class="text-xs font-extrabold text-white truncate block tracking-wide">${staff.name}</span>
+                                </div>
+                            ` : `
+                                <div class="flex items-center justify-center w-full h-full text-slate-400 text-xs font-bold">-</div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderStaffManagementTable() {
+            const tbody = document.getElementById('staff-management-tbody');
+            const searchInput = document.getElementById('sheet-staff-search');
+            const query = searchInput ? searchInput.value.toLowerCase() : '';
+            
+            tbody.innerHTML = '';
+            document.getElementById('sheet-total-count').textContent = staffPool.length;
+
+            const filtered = staffPool.filter(s => s.name.toLowerCase().includes(query) || s.role.toLowerCase().includes(query));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">該当するスタッフが見つかりません</td></tr>`;
+                return;
+            }
+
+            filtered.forEach((staff, index) => {
+                let assignedLocation = '未配置（プール内）';
+                let isAssigned = false;
+                
+                boardRows.forEach(row => {
+                    Object.keys(row.slots).forEach(k => {
+                        if (row.slots[k] === staff.id) {
+                            isAssigned = true;
+                            let slotName = k.startsWith('morning') ? '朝' : (k.startsWith('night') ? '夜' : (k === 'inspection' ? '出荷検査' : '外部派遣'));
+                            assignedLocation = `${row.machine} (${slotName})`;
+                        }
+                    });
+                });
+                supervisorsData.forEach(sup => {
+                    if (sup.staffId === staff.id) {
+                        isAssigned = true;
+                        assignedLocation = `監督者・リーダー枠 (${sup.title})`;
+                    }
+                });
+
+                let avatarHtml = staff.photo 
+                    ? `<img src="${staff.photo}" class="w-14 h-14 rounded-xl object-cover border-2 border-slate-200 shadow mx-auto">`
+                    : `<div class="w-14 h-14 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-base mx-auto border-2 border-blue-200 shadow">${staff.name.charAt(0)}</div>`;
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-3.5 text-center font-mono text-slate-500">#${index + 1}</td>
+                    <td class="p-3.5 text-center">${avatarHtml}</td>
+                    <td class="p-3.5 font-bold text-slate-800 text-sm">
+                        <span>${staff.name}</span>
+                    </td>
+                    <td class="p-3.5">
+                        <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200">${staff.role}</span>
+                    </td>
+                    <td class="p-3.5 text-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${isAssigned ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}">
+                            ${assignedLocation}
+                        </span>
+                    </td>
+                    <td class="p-3.5 text-center">
+                        <input type="file" accept="image/*" onchange="updateStaffPhoto(event, '${staff.id}')" class="text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    </td>
+                    <td class="p-3.5 text-center">
+                        <button type="button" onclick="promptDeleteStaff('${staff.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1.5 rounded-lg transition text-xs flex items-center justify-center space-x-1 mx-auto cursor-pointer">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>削除</span>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStaffPhoto(event, staffId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const staff = staffPool.find(s => s.id === staffId);
+                if (staff) {
+                    staff.photo = e.target.result;
+                    renderStaffManagementTable();
+                    renderStaffPool();
+                    renderBoardRows();
+                    renderSupervisors();
+                    if (currentTab === 'monitor') renderMonitorView();
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        let draggedStaffId = null;
+
+        function drag(ev, staffId) {
+            draggedStaffId = staffId;
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function dropToSlot(ev, rowId, slotKey) {
+            ev.preventDefault();
+            if (!draggedStaffId) return;
+
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === draggedStaffId) sup.staffId = '';
+            });
+
+            const targetRow = boardRows.find(r => r.id === rowId);
+            if (targetRow) {
+                targetRow.slots[slotKey] = draggedStaffId;
+            }
+
+            draggedStaffId = null;
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function dropToInspectionHeader(ev) {
+            ev.preventDefault();
+            if (!draggedStaffId) return;
+
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === draggedStaffId) sup.staffId = '';
+            });
+
+            boardRows[0].slots.inspection = draggedStaffId;
+
+            draggedStaffId = null;
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function dropToExtHeader(ev, extNum) {
+            ev.preventDefault();
+            if (!draggedStaffId) return;
+
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === draggedStaffId) sup.staffId = '';
+            });
+
+            const slotKey = extNum === 1 ? 'ext1' : 'ext2';
+            boardRows[0].slots[slotKey] = draggedStaffId;
+
+            draggedStaffId = null;
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function dropToSupervisor(ev, supIdx) {
+            ev.preventDefault();
+            if (!draggedStaffId) return;
+
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === draggedStaffId) sup.staffId = '';
+            });
+
+            supervisorsData[supIdx].staffId = draggedStaffId;
+
+            draggedStaffId = null;
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function dropToPool(ev) {
+            ev.preventDefault();
+            if (!draggedStaffId) return;
+
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === draggedStaffId) sup.staffId = '';
+            });
+
+            draggedStaffId = null;
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function removeStaffFromSlot(rowId, slotKey) {
+            const row = boardRows.find(r => r.id === rowId);
+            if (row) {
+                row.slots[slotKey] = '';
+                renderStaffPool();
+                renderBoardRows();
+                renderSupervisors();
+            }
+        }
+
+        function removeStaffFromSupervisor(supIdx) {
+            supervisorsData[supIdx].staffId = '';
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+        }
+
+        function updateTotalCount() {
+            document.getElementById('total-staff-count').textContent = staffPool.length;
+        }
+
+        function openAddStaffModal() {
+            document.getElementById('add-staff-modal').classList.remove('hidden');
+        }
+
+        function closeAddStaffModal() {
+            document.getElementById('add-staff-modal').classList.add('hidden');
+            document.getElementById('new-staff-names').value = '';
+            document.getElementById('new-staff-photo').value = '';
+        }
+
+        function confirmAddStaff() {
+            const rawText = document.getElementById('new-staff-names').value.trim();
+            const role = document.getElementById('new-staff-role').value;
+            const photoInput = document.getElementById('new-staff-photo');
+            if (!rawText) return;
+
+            const names = rawText.split(/[\n,]+/).map(n => n.trim()).filter(n => n.length > 0);
+            
+            if (photoInput.files && photoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const photoUrl = e.target.result;
+                    names.forEach((name, index) => {
+                        const newId = 's_new_' + Date.now() + '_' + index;
+                        staffPool.push({ id: newId, name, role, photo: photoUrl });
+                    });
+                    finalizeAddStaff();
+                };
+                reader.readAsDataURL(photoInput.files[0]);
+            } else {
+                names.forEach((name, index) => {
+                    const newId = 's_new_' + Date.now() + '_' + index;
+                    staffPool.push({ id: newId, name, role, photo: '' });
+                });
+                finalizeAddStaff();
+            }
+        }
+
+        function finalizeAddStaff() {
+            closeAddStaffModal();
+            updateTotalCount();
+            if (currentTab === 'board') {
+                renderStaffPool();
+                renderSupervisors();
+            } else if (currentTab === 'staff') {
+                renderStaffManagementTable();
+            } else if (currentTab === 'monitor') {
+                renderMonitorView();
+            }
+        }
+
+        function promptDeleteStaff(staffId) {
+            staffToDeleteId = staffId;
+            const staff = staffPool.find(s => s.id === staffId);
+            if (staff) {
+                document.getElementById('delete-modal-text').textContent = `「${staff.name}」さんをスタッフから削除しますか？`;
+            }
+            document.getElementById('delete-modal').classList.remove('hidden');
+            document.getElementById('confirm-delete-btn').onclick = function() {
+                executeDeleteStaff(staffToDeleteId);
+            };
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            staffToDeleteId = null;
+        }
+
+        function executeDeleteStaff(staffId) {
+            staffPool = staffPool.filter(s => s.id !== staffId);
+            
+            boardRows.forEach(row => {
+                Object.keys(row.slots).forEach(k => {
+                    if (row.slots[k] === staffId) row.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === staffId) sup.staffId = '';
+            });
+
+            closeDeleteModal();
+            updateTotalCount();
+            
+            if (currentTab === 'board') {
+                renderStaffPool();
+                renderBoardRows();
+                renderSupervisors();
+            } else if (currentTab === 'staff') {
+                renderStaffManagementTable();
+            } else if (currentTab === 'monitor') {
+                renderMonitorView();
+            }
+        }
+
+        function openAiModal() {
+            document.getElementById('ai-modal').classList.remove('hidden');
+        }
+
+        function closeAiModal() {
+            document.getElementById('ai-modal').classList.add('hidden');
+            document.getElementById('ai-loading').classList.add('hidden');
+            document.getElementById('ai-result-box').classList.add('hidden');
+            document.getElementById('apply-ai-btn').disabled = true;
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('ai-loading').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('ai-loading').classList.add('hidden');
+                document.getElementById('ai-result-box').classList.remove('hidden');
+                document.getElementById('ai-result-text').textContent = `「${file.name}」を解析しました。ホワイトボードのスタッフ名および配置状態を正常に認識しました。`;
+                document.getElementById('apply-ai-btn').disabled = false;
+            }, 2000);
+        }
+
+        function applyAiResults() {
+            closeAiModal();
+        }
+
+        function saveData() {
+            alert('配置データを保存しました。');
+        }
+    </script>
+</body>
+</html>

@@ -10,9 +10,10 @@
     <style>
         body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
         
-        /* 通常ボード用のスロットボックス */
+        /* 通常ボード用のスロットボックス（全枠フィット仕様） */
         .board-slot-box {
             height: 82px;
+            width: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -776,26 +777,28 @@
                     const staff = staffPool.find(s => s.id === staffId);
 
                     html += `
-                        <td class="p-1 border-r border-slate-200 text-center align-middle" ondragover="window.allowDrop(event)" ondrop="window.dropToSlot(event, '${row.id}', '${slotKey}')">
-                            <div class="board-slot-box rounded-xl border border-dashed border-slate-300 hover:border-blue-400 p-1 transition bg-white/50">
+                        <td class="p-0.5 border-r border-slate-200 text-center align-middle" ondragover="window.allowDrop(event)" ondrop="window.dropToSlot(event, '${row.id}', '${slotKey}')">
+                            <div class="board-slot-box rounded-lg border border-dashed border-slate-300 hover:border-blue-400 transition bg-slate-50">
                     `;
 
                     if (staff) {
-                        let innerAvatar = staff.photo
-                            ? `<img src="${staff.photo}" class="w-8 h-8 rounded-full object-cover border border-slate-200 mb-0.5">`
-                            : `<div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs mb-0.5">${staff.name.charAt(0)}</div>`;
+                        let innerVisual = staff.photo
+                            ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
+                            : `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-black text-base absolute inset-0">${staff.name.charAt(0)}</div>`;
 
                         html += `
-                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full flex flex-col items-center justify-center relative group cursor-grab">
-                                ${innerAvatar}
-                                <span class="text-[11px] font-bold text-slate-800 truncate max-w-full">${staff.name}</span>
-                                <button onclick="window.clearSlot('${row.id}', '${slotKey}')" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow">
+                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full relative group cursor-grab overflow-hidden">
+                                ${innerVisual}
+                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[1px] py-0.5 px-0.5 text-center z-10">
+                                    <span class="text-[10px] font-bold text-white truncate block tracking-tight leading-tight">${staff.name}</span>
+                                </div>
+                                <button onclick="window.clearSlot('${row.id}', '${slotKey}')" class="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
                         `;
                     } else {
-                        html += `<span class="text-slate-300 text-[10px] pointer-events-none">+ 配置</span>`;
+                        html += `<span class="text-slate-300 text-[10px] pointer-events-none font-bold">+ 配置</span>`;
                     }
 
                     html += `
@@ -818,27 +821,29 @@
                 const staff = staffPool.find(s => s.id === sup.staffId);
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm relative";
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-2 flex flex-col items-center text-center shadow-sm relative";
                 card.ondragover = window.allowDrop;
                 card.ondrop = (e) => window.dropToSupervisor(e, sup.id);
 
                 let avatarHtml = '';
                 if (staff) {
                     avatarHtml = staff.photo
-                        ? `<img src="${staff.photo}" class="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 mb-1">`
-                        : `<div class="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm mb-1">${staff.name.charAt(0)}</div>`;
+                        ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
+                        : `<div class="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-xl absolute inset-0">${staff.name.charAt(0)}</div>`;
                 }
 
                 card.innerHTML = `
                     <span class="text-[11px] font-bold text-indigo-700 mb-1 flex items-center">
                         <i class="fa-solid fa-shield-halved mr-1"></i>${sup.title}
                     </span>
-                    <div class="w-full flex flex-col items-center justify-center min-h-[60px]">
+                    <div class="w-full h-24 relative rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
                         ${staff ? `
-                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="relative group cursor-grab flex flex-col items-center w-full">
+                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full relative group cursor-grab">
                                 ${avatarHtml}
-                                <span class="text-xs font-bold text-slate-800">${staff.name}</span>
-                                <button onclick="window.clearSupervisor('${sup.id}')" class="absolute top-0 right-2 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow">
+                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[1px] py-0.5 px-1 text-center z-10">
+                                    <span class="text-xs font-bold text-white truncate block tracking-tight">${staff.name}</span>
+                                </div>
+                                <button onclick="window.clearSupervisor('${sup.id}')" class="absolute top-1 right-1 bg-red-500/90 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
@@ -863,7 +868,6 @@
             if (!container) return;
             container.innerHTML = '';
 
-            // Calculate exact height string for CSS flex/height
             const rowCount = boardRows.length || 1;
             const rowHeightPercent = (100 / rowCount).toFixed(4) + '%';
 

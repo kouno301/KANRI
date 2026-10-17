@@ -554,9 +554,20 @@
             unsubscribe = onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    if (data.staffPool) window.staffPool = data.staffPool;
-                    if (data.boardRows) window.boardRows = data.boardRows;
-                    if (data.supervisorsData) window.supervisorsData = data.supervisorsData;
+                    if (data.staffPool) {
+                        window.staffPool = data.staffPool;
+                        window.updateStaffPoolFromCloud?.(data.staffPool);
+                    }
+
+                    if (data.boardRows) {
+                        window.boardRows = data.boardRows;
+                        window.updateBoardRowsFromCloud?.(data.boardRows);
+                    }
+
+                    if (data.supervisorsData) {
+                        window.supervisorsData = data.supervisorsData;
+                        window.updateSupervisorsFromCloud?.(data.supervisorsData);
+                    }
 
                     if (window.currentTab === 'board') {
                         window.renderStaffPool();
@@ -654,6 +665,19 @@
         window.staffPool = staffPool;
         window.boardRows = boardRows;
         window.supervisorsData = supervisorsData;
+        
+        window.updateStaffPoolFromCloud = function(data) {
+            staffPool = data;
+        };
+
+        window.updateBoardRowsFromCloud = function(data) {
+            boardRows = data;
+        };
+
+        window.updateSupervisorsFromCloud = function(data) {
+            supervisorsData = data;
+        };
+
         window.currentTab = currentTab;
 
         window.onload = function() {

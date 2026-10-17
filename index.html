@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>工場人員配置マネージャー</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts Inter & Noto Sans JP -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
@@ -26,31 +23,33 @@
 
         /* モニター表示用のスロットボックス（均一な高さを確保し、写真を枠いっぱいに表示） */
         .monitor-slot-box {
-            height: 100px;
+            height: 100%;
             width: 100%;
             display: flex;
             position: relative;
             overflow: hidden;
             border-radius: 8px;
             background-color: #f1f5f9;
+            min-height: 85px;
         }
 
         /* モニター表示の右側 監督者・リーダー用スロットボックス */
         .monitor-sup-slot-box {
-            height: 90px;
+            height: 100%;
             width: 100%;
             display: flex;
             position: relative;
             overflow: hidden;
             border-radius: 8px;
             background-color: #f1f5f9;
+            min-height: 75px;
         }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <header class="bg-slate-900 text-white shadow-md">
-        <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+    <header class="bg-slate-900 text-white shadow-md shrink-0">
+        <div class="max-w-[1800px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center space-x-3">
                 <div class="bg-blue-600 text-white p-2 rounded-xl shadow">
                     <i class="fa-solid fa-industry text-xl"></i>
@@ -78,12 +77,15 @@
                 <!-- Date Picker (Calendar icon forced white) -->
                 <div class="flex items-center bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 relative">
                     <i class="fa-regular fa-calendar text-white mr-2 pointer-events-none"></i>
-                    <input type="date" id="board-date" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark]" value="2026-10-15" onchange="if(currentTab==='monitor') renderMonitorView();">
+                    <input type="date" id="board-date" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark]" value="2026-10-15" onchange="onDateChange()">
                 </div>
 
                 <!-- Total Count Badge -->
-                <div class="bg-blue-600/20 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg text-sm font-semibold">
-                    総人員: <span id="total-staff-count" class="text-white font-bold">26</span>名
+                <div class="bg-blue-600/20 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center space-x-2">
+                    <span>総人員: <span id="total-staff-count" class="text-white font-bold">0</span>名</span>
+                    <span id="sync-status" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <i class="fa-solid fa-cloud text-[9px]"></i> 共有同期中
+                    </span>
                 </div>
 
                 <!-- Action Buttons -->
@@ -93,16 +95,16 @@
                 </button>
                 <button onclick="saveData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
                     <i class="fa-solid fa-floppy-disk"></i>
-                    <span>保存</span>
+                    <span>クラウド保存</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 w-full mx-auto p-4 md:p-6" id="main-container">
+    <main class="flex-1 w-full mx-auto p-4 md:p-6 flex flex-col" id="main-container">
         
         <!-- Tab 1: Assignment Board -->
-        <div id="view-board" class="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div id="view-board" class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5">
             
             <!-- Left Sidebar: Staff Pool (2 cols) -->
             <div class="lg:col-span-2 flex flex-col gap-6">
@@ -143,7 +145,6 @@
                     </div>
 
                     <div class="overflow-x-auto flex-1">
-                        <!-- table-fixedおよびcolgroupで枠の横幅を完全均一化 -->
                         <table class="w-full text-left border-collapse table-fixed" id="assignment-table">
                             <colgroup>
                                 <col style="width: 140px;">
@@ -190,7 +191,7 @@
         </div>
 
         <!-- Tab 2: Staff Management -->
-        <div id="view-staff" class="hidden max-w-7xl mx-auto flex flex-col gap-6">
+        <div id="view-staff" class="hidden max-w-7xl mx-auto w-full flex flex-col gap-6">
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <div class="flex flex-wrap justify-between items-center mb-6 pb-4 border-b border-slate-100 gap-4">
                     <div>
@@ -236,11 +237,11 @@
             </div>
         </div>
 
-        <!-- Tab 3: White-themed Monitor View with Full-Size Staff Photos -->
-        <div id="view-monitor" class="hidden w-full flex flex-col gap-4">
-            <div class="bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 w-full max-w-full mx-auto">
+        <!-- Tab 3: White-themed Monitor View with Full-Size Staff Photos fitting screen -->
+        <div id="view-monitor" class="hidden w-full flex-1 flex flex-col">
+            <div class="bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 w-full flex-1 flex flex-col h-full">
                 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full items-stretch">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full flex-1 items-stretch">
                     
                     <!-- Left Vertical Sidebar (1 col) -->
                     <div class="lg:col-span-1 flex flex-col gap-3 justify-between">
@@ -260,13 +261,13 @@
                             <span class="text-base font-extrabold text-slate-800"><span id="monitor-total-count" class="text-blue-600">26</span>名</span>
                         </div>
 
-                        <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 text-center">
+                        <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 text-center shrink-0">
                             <span class="text-[9px] text-slate-500 font-bold block">工場モニター<br>ライブ表示</span>
                         </div>
                     </div>
 
                     <!-- Main Monitor Board Table (9.5 cols) -->
-                    <div class="lg:col-span-9 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col">
+                    <div class="lg:col-span-9 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col flex-1">
                         <div class="bg-slate-900 text-white px-4 py-3 border-b border-slate-800 font-bold text-xs flex justify-between items-center shrink-0">
                             <div class="flex items-center space-x-2">
                                 <i class="fa-solid fa-industry text-blue-400 text-sm"></i>
@@ -278,7 +279,7 @@
                             </div>
                         </div>
                         <div class="overflow-x-auto w-full flex-1 flex flex-col">
-                            <table class="w-full text-left border-collapse table-fixed flex-1" id="monitor-assignment-table">
+                            <table class="w-full text-left border-collapse table-fixed h-full" id="monitor-assignment-table">
                                 <colgroup>
                                     <col style="width: 140px;">
                                     <col style="width: calc((100% - 140px) / 7);">
@@ -308,12 +309,12 @@
                         </div>
                     </div>
 
-                    <!-- Right Side Supervisor & Leader Column (1.5 cols) -->
-                    <div class="lg:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                    <!-- Right Side Supervisor & Leader Column (2 cols) -->
+                    <div class="lg:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between flex-1">
                         <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 flex items-center justify-center border-b border-slate-200 pb-2 shrink-0">
                             <i class="fa-solid fa-user-tie mr-1.5 text-indigo-600"></i>監督者・リーダー
                         </h3>
-                        <div class="flex flex-col gap-2.5 flex-1 justify-around" id="monitor-supervisors-container">
+                        <div class="flex flex-col gap-2.5 flex-1 justify-around h-full" id="monitor-supervisors-container">
                             <!-- Populated via JS -->
                         </div>
                     </div>
@@ -413,6 +414,103 @@
         </div>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBye1Fnx7JIAdwbGSaltp2mV40kNZEQzZY",
+            authDomain: "kanri-8c69e.firebaseapp.com",
+            projectId: "kanri-8c69e",
+            storageBucket: "kanri-8c69e.firebasestorage.app",
+            messagingSenderId: "997183223836",
+            appId: "1:997183223836:web:59fec8cb1c457eceda47d9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kanri-8c69e-app';
+
+        window.db = db;
+        window.auth = auth;
+        window.appId = appId;
+        window.setDoc = setDoc;
+        window.doc = doc;
+
+        // Initialize Anonymous Authentication and Setup Realtime Listener
+        signInAnonymously(auth).then(() => {
+            console.log("Firebase Auth Authenticated");
+            setupRealtimeSync();
+        }).catch((err) => {
+            console.error("Auth Error:", err);
+            setupRealtimeSync(); // fallback
+        });
+
+        function getBoardDocRef() {
+            const dateVal = document.getElementById('board-date').value || '2026-10-15';
+            return doc(db, 'artifacts', window.appId, 'public', 'data', 'assignments', dateVal);
+        }
+
+        let unsubscribe = null;
+
+        window.setupRealtimeSync = function() {
+            if (unsubscribe) unsubscribe();
+
+            const dateVal = document.getElementById('board-date').value || '2026-10-15';
+            const docRef = doc(db, 'artifacts', window.appId, 'public', 'data', 'assignments', dateVal);
+
+            unsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.staffPool) window.staffPool = data.staffPool;
+                    if (data.boardRows) window.boardRows = data.boardRows;
+                    if (data.supervisorsData) window.supervisorsData = data.supervisorsData;
+
+                    if (window.currentTab === 'board') {
+                        window.renderStaffPool();
+                        window.renderBoardRows();
+                        window.renderSupervisors();
+                    } else if (window.currentTab === 'staff') {
+                        window.renderStaffManagementTable();
+                    } else if (window.currentTab === 'monitor') {
+                        window.renderMonitorView();
+                    }
+                    window.updateTotalCount();
+                    
+                    const syncEl = document.getElementById('sync-status');
+                    if (syncEl) syncEl.className = "text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1";
+                }
+            }, (error) => {
+                console.error("Firestore sync error:", error);
+                const syncEl = document.getElementById('sync-status');
+                if (syncEl) syncEl.className = "text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded flex items-center gap-1";
+            });
+        };
+
+        window.saveDataToFirestore = async function() {
+            try {
+                const dateVal = document.getElementById('board-date').value || '2026-10-15';
+                const docRef = doc(db, 'artifacts', window.appId, 'public', 'data', 'assignments', dateVal);
+                
+                await setDoc(docRef, {
+                    staffPool: window.staffPool,
+                    boardRows: window.boardRows,
+                    supervisorsData: window.supervisorsData,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+
+                window.showNotification('クラウドにリアルタイム保存しました！');
+            } catch(e) {
+                console.error("Save error:", e);
+                window.showNotification('保存に失敗しました');
+            }
+        };
+    </script>
+
     <script>
         let staffPool = [
             { id: 's1', name: 'スガイ', role: '作業者', photo: '' },
@@ -465,6 +563,11 @@
         let currentTab = 'board';
         let staffToDeleteId = null;
 
+        window.staffPool = staffPool;
+        window.boardRows = boardRows;
+        window.supervisorsData = supervisorsData;
+        window.currentTab = currentTab;
+
         window.onload = function() {
             renderStaffPool();
             renderBoardRows();
@@ -472,8 +575,34 @@
             updateTotalCount();
         };
 
+        function onDateChange() {
+            if (window.setupRealtimeSync) {
+                window.setupRealtimeSync();
+            }
+            if (currentTab === 'monitor') {
+                renderMonitorView();
+            }
+        }
+
+        function saveData() {
+            if (window.saveDataToFirestore) {
+                window.saveDataToFirestore();
+            } else {
+                showNotification('ローカル保存を行いました');
+            }
+        }
+
+        function showNotification(msg) {
+            const div = document.createElement('div');
+            div.className = 'fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl z-50 text-xs font-bold flex items-center space-x-2 animate-bounce';
+            div.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span>${msg}</span>`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
         function switchTab(tab) {
             currentTab = tab;
+            window.currentTab = tab;
             const viewBoard = document.getElementById('view-board');
             const viewStaff = document.getElementById('view-staff');
             const viewMonitor = document.getElementById('view-monitor');
@@ -507,6 +636,14 @@
             }
         }
 
+        // Auto sync helper after drag/drop or editing
+        function autoSync() {
+            if (window.saveDataToFirestore) {
+                window.saveDataToFirestore();
+            }
+        }
+
+        // Rest of rendering and handlers
         function getAssignedIds() {
             const assignedIds = new Set();
             boardRows.forEach(row => {
@@ -520,6 +657,11 @@
             return assignedIds;
         }
 
+        function updateTotalCount() {
+            const countEl = document.getElementById('total-staff-count');
+            if (countEl) countEl.textContent = staffPool.length;
+        }
+
         function renderStaffPool(filter = '') {
             const poolEl = document.getElementById('staff-pool');
             if (!poolEl) return;
@@ -530,6 +672,7 @@
             const filtered = unassigned.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
             
             document.getElementById('pool-count').textContent = staffPool.length;
+            updateTotalCount();
 
             if (filtered.length === 0) {
                 poolEl.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">未配置のスタッフはありません<br><span class="text-[10px]">(全員配置済み)</span></div>`;
@@ -564,6 +707,131 @@
         function filterStaffPool() {
             const query = document.getElementById('staff-search').value;
             renderStaffPool(query);
+        }
+
+        function drag(ev, staffId) {
+            ev.dataTransfer.setData('text/plain', staffId);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function dropToSlot(ev, rowId, slotKey) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData('text/plain');
+            if (!staffId) return;
+
+            boardRows.forEach(r => {
+                Object.keys(r.slots).forEach(k => {
+                    if (r.slots[k] === staffId) r.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === staffId) sup.staffId = '';
+            });
+
+            const targetRow = boardRows.find(r => r.id === rowId);
+            if (targetRow) {
+                targetRow.slots[slotKey] = staffId;
+            }
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            autoSync();
+        }
+
+        function dropToSupervisor(ev, supIdx) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData('text/plain');
+            if (!staffId) return;
+
+            boardRows.forEach(r => {
+                Object.keys(r.slots).forEach(k => {
+                    if (r.slots[k] === staffId) r.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === staffId) sup.staffId = '';
+            });
+
+            if (supervisorsData[supIdx]) {
+                supervisorsData[supIdx].staffId = staffId;
+            }
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            autoSync();
+        }
+
+        function dropToPool(ev) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData('text/plain');
+            if (!staffId) return;
+
+            boardRows.forEach(r => {
+                Object.keys(r.slots).forEach(k => {
+                    if (r.slots[k] === staffId) r.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === staffId) sup.staffId = '';
+            });
+
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            autoSync();
+        }
+
+        function dropToInspectionHeader(ev) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData('text/plain');
+            if (!staffId) return;
+            for (let r of boardRows) {
+                if (!r.slots.inspection) {
+                    r.slots.inspection = staffId;
+                    break;
+                }
+            }
+            renderStaffPool();
+            renderBoardRows();
+            autoSync();
+        }
+
+        function dropToExtHeader(ev, extNum) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData('text/plain');
+            if (!staffId) return;
+            const key = extNum === 1 ? 'ext1' : 'ext2';
+            for (let r of boardRows) {
+                if (!r.slots[key]) {
+                    r.slots[key] = staffId;
+                    break;
+                }
+            }
+            renderStaffPool();
+            renderBoardRows();
+            autoSync();
+        }
+
+        function removeStaffFromSlot(rowId, slotKey) {
+            const row = boardRows.find(r => r.id === rowId);
+            if (row) {
+                row.slots[slotKey] = '';
+                renderStaffPool();
+                renderBoardRows();
+                autoSync();
+            }
+        }
+
+        function removeStaffFromSupervisor(supIdx) {
+            if (supervisorsData[supIdx]) {
+                supervisorsData[supIdx].staffId = '';
+                renderStaffPool();
+                renderSupervisors();
+                autoSync();
+            }
         }
 
         function renderBoardRows() {
@@ -667,13 +935,12 @@
             document.getElementById('monitor-date-display').innerHTML = formattedDate;
             document.getElementById('monitor-total-count').textContent = staffPool.length;
 
-            // Render Monitor Main Table (with photos filling the full slot box)
             const monitorTbody = document.getElementById('monitor-board-rows');
             monitorTbody.innerHTML = '';
 
             boardRows.forEach(row => {
                 let html = `
-                    <tr class="hover:bg-slate-100/60 transition">
+                    <tr class="hover:bg-slate-100/60 transition h-full">
                         <td class="p-2 font-bold text-slate-800 text-xs bg-slate-200/70 border-r border-slate-200 w-[140px] text-center">
                             <div class="flex items-center justify-center space-x-1 truncate">
                                 <i class="fa-solid fa-gears text-blue-600 mr-1"></i>
@@ -687,7 +954,7 @@
                     const staff = staffPool.find(s => s.id === staffId);
                     
                     html += `
-                        <td class="p-1 border-r border-slate-200 text-center">
+                        <td class="p-1 border-r border-slate-200 text-center h-full">
                             <div class="monitor-slot-box border border-slate-200 shadow-sm">
                     `;
 
@@ -718,7 +985,6 @@
                 monitorTbody.innerHTML += html;
             });
 
-            // Render Monitor Right Supervisor Cards (with photos filling the full slot box)
             const supContainer = document.getElementById('monitor-supervisors-container');
             supContainer.innerHTML = '';
 
@@ -754,66 +1020,69 @@
 
         function renderStaffManagementTable() {
             const tbody = document.getElementById('staff-management-tbody');
-            const searchInput = document.getElementById('sheet-staff-search');
-            const query = searchInput ? searchInput.value.toLowerCase() : '';
-            
+            if (!tbody) return;
             tbody.innerHTML = '';
+
+            const query = document.getElementById('sheet-staff-search') ? document.getElementById('sheet-staff-search').value : '';
+            const filtered = staffPool.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+
             document.getElementById('sheet-total-count').textContent = staffPool.length;
 
-            const filtered = staffPool.filter(s => s.name.toLowerCase().includes(query) || s.role.toLowerCase().includes(query));
-
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">該当するスタッフが見つかりません</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 text-xs">登録されているスタッフがいません</td></tr>`;
                 return;
             }
 
-            filtered.forEach((staff, index) => {
-                let assignedLocation = '未配置（プール内）';
-                let isAssigned = false;
-                
-                boardRows.forEach(row => {
-                    Object.keys(row.slots).forEach(k => {
-                        if (row.slots[k] === staff.id) {
-                            isAssigned = true;
-                            let slotName = k.startsWith('morning') ? '朝' : (k.startsWith('night') ? '夜' : (k === 'inspection' ? '出荷検査' : '外部派遣'));
-                            assignedLocation = `${row.machine} (${slotName})`;
+            filtered.forEach(staff => {
+                const assignedIds = getAssignedIds();
+                const isAssigned = assignedIds.has(staff.id);
+                let assignedLocation = '-';
+                if (isAssigned) {
+                    for (let r of boardRows) {
+                        for (let k of Object.keys(r.slots)) {
+                            if (r.slots[k] === staff.id) assignedLocation = `${r.machine} (${k})`;
                         }
-                    });
-                });
-                supervisorsData.forEach(sup => {
-                    if (sup.staffId === staff.id) {
-                        isAssigned = true;
-                        assignedLocation = `監督者・リーダー枠 (${sup.title})`;
                     }
-                });
-
-                let avatarHtml = staff.photo 
-                    ? `<img src="${staff.photo}" class="w-14 h-14 rounded-xl object-cover border-2 border-slate-200 shadow mx-auto">`
-                    : `<div class="w-14 h-14 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-base mx-auto border-2 border-blue-200 shadow">${staff.name.charAt(0)}</div>`;
+                    for (let sup of supervisorsData) {
+                        if (sup.staffId === staff.id) assignedLocation = sup.title;
+                    }
+                }
 
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-50 transition';
+                
+                let avatarHtml = staff.photo 
+                    ? `<img src="${staff.photo}" class="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-sm mx-auto">`
+                    : `<div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm mx-auto border border-blue-200 shadow-sm">${staff.name.charAt(0)}</div>`;
+
                 tr.innerHTML = `
-                    <td class="p-3.5 text-center font-mono text-slate-500">#${index + 1}</td>
+                    <td class="p-3.5 text-center font-mono text-slate-500 text-xs">${staff.id}</td>
                     <td class="p-3.5 text-center">${avatarHtml}</td>
-                    <td class="p-3.5 font-bold text-slate-800 text-sm">
-                        <span>${staff.name}</span>
+                    <td class="p-3.5 font-bold text-slate-800 text-xs">
+                        <input type="text" value="${staff.name}" onchange="updateStaffName('${staff.id}', this.value)" class="bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 text-xs w-full focus:outline-none">
                     </td>
                     <td class="p-3.5">
-                        <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200">${staff.role}</span>
+                        <select onchange="updateStaffRole('${staff.id}', this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="作業者" ${staff.role==='作業者'?'selected':''}>作業者</option>
+                            <option value="リーダー" ${staff.role==='リーダー'?'selected':''}>リーダー</option>
+                            <option value="監督者" ${staff.role==='監督者'?'selected':''}>監督者</option>
+                            <option value="外部協力者" ${staff.role==='外部協力者'?'selected':''}>外部協力者</option>
+                        </select>
                     </td>
                     <td class="p-3.5 text-center">
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${isAssigned ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}">
+                        <span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold ${isAssigned ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'}">
                             ${assignedLocation}
                         </span>
                     </td>
                     <td class="p-3.5 text-center">
-                        <input type="file" accept="image/*" onchange="updateStaffPhoto(event, '${staff.id}')" class="text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <input type="file" accept="image/*" onchange="updateStaffPhoto(event, '${staff.id}')" class="hidden" id="photo-file-${staff.id}">
+                        <label for="photo-file-${staff.id}" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-3 py-1 rounded-lg text-[11px] cursor-pointer inline-flex items-center space-x-1 transition shadow-sm">
+                            <i class="fa-solid fa-camera"></i><span>変更</span>
+                        </label>
                     </td>
                     <td class="p-3.5 text-center">
-                        <button type="button" onclick="promptDeleteStaff('${staff.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1.5 rounded-lg transition text-xs flex items-center justify-center space-x-1 mx-auto cursor-pointer">
-                            <i class="fa-solid fa-trash-can"></i>
-                            <span>削除</span>
+                        <button onclick="promptDeleteStaff('${staff.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1 rounded-lg text-[11px] transition inline-flex items-center space-x-1 cursor-pointer">
+                            <i class="fa-solid fa-trash-can"></i><span>削除</span>
                         </button>
                     </td>
                 `;
@@ -821,220 +1090,43 @@
             });
         }
 
-        function updateStaffPhoto(event, staffId) {
+        function updateStaffName(id, newName) {
+            const s = staffPool.find(x => x.id === id);
+            if (s) {
+                s.name = newName.trim();
+                renderStaffPool();
+                autoSync();
+            }
+        }
+
+        function updateStaffRole(id, newRole) {
+            const s = staffPool.find(x => x.id === id);
+            if (s) {
+                s.role = newRole;
+                autoSync();
+            }
+        }
+
+        function updateStaffPhoto(event, id) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                const staff = staffPool.find(s => s.id === staffId);
-                if (staff) {
-                    staff.photo = e.target.result;
-                    renderStaffManagementTable();
+                const s = staffPool.find(x => x.id === id);
+                if (s) {
+                    s.photo = e.target.result;
                     renderStaffPool();
-                    renderBoardRows();
-                    renderSupervisors();
-                    if (currentTab === 'monitor') renderMonitorView();
+                    renderStaffManagementTable();
+                    autoSync();
                 }
             };
             reader.readAsDataURL(file);
         }
 
-        let draggedStaffId = null;
-
-        function drag(ev, staffId) {
-            draggedStaffId = staffId;
-        }
-
-        function allowDrop(ev) {
-            ev.preventDefault();
-        }
-
-        function dropToSlot(ev, rowId, slotKey) {
-            ev.preventDefault();
-            if (!draggedStaffId) return;
-
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === draggedStaffId) sup.staffId = '';
-            });
-
-            const targetRow = boardRows.find(r => r.id === rowId);
-            if (targetRow) {
-                targetRow.slots[slotKey] = draggedStaffId;
-            }
-
-            draggedStaffId = null;
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function dropToInspectionHeader(ev) {
-            ev.preventDefault();
-            if (!draggedStaffId) return;
-
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === draggedStaffId) sup.staffId = '';
-            });
-
-            boardRows[0].slots.inspection = draggedStaffId;
-
-            draggedStaffId = null;
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function dropToExtHeader(ev, extNum) {
-            ev.preventDefault();
-            if (!draggedStaffId) return;
-
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === draggedStaffId) sup.staffId = '';
-            });
-
-            const slotKey = extNum === 1 ? 'ext1' : 'ext2';
-            boardRows[0].slots[slotKey] = draggedStaffId;
-
-            draggedStaffId = null;
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function dropToSupervisor(ev, supIdx) {
-            ev.preventDefault();
-            if (!draggedStaffId) return;
-
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === draggedStaffId) sup.staffId = '';
-            });
-
-            supervisorsData[supIdx].staffId = draggedStaffId;
-
-            draggedStaffId = null;
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function dropToPool(ev) {
-            ev.preventDefault();
-            if (!draggedStaffId) return;
-
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === draggedStaffId) row.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === draggedStaffId) sup.staffId = '';
-            });
-
-            draggedStaffId = null;
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function removeStaffFromSlot(rowId, slotKey) {
-            const row = boardRows.find(r => r.id === rowId);
-            if (row) {
-                row.slots[slotKey] = '';
-                renderStaffPool();
-                renderBoardRows();
-                renderSupervisors();
-            }
-        }
-
-        function removeStaffFromSupervisor(supIdx) {
-            supervisorsData[supIdx].staffId = '';
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-        }
-
-        function updateTotalCount() {
-            document.getElementById('total-staff-count').textContent = staffPool.length;
-        }
-
-        function openAddStaffModal() {
-            document.getElementById('add-staff-modal').classList.remove('hidden');
-        }
-
-        function closeAddStaffModal() {
-            document.getElementById('add-staff-modal').classList.add('hidden');
-            document.getElementById('new-staff-names').value = '';
-            document.getElementById('new-staff-photo').value = '';
-        }
-
-        function confirmAddStaff() {
-            const rawText = document.getElementById('new-staff-names').value.trim();
-            const role = document.getElementById('new-staff-role').value;
-            const photoInput = document.getElementById('new-staff-photo');
-            if (!rawText) return;
-
-            const names = rawText.split(/[\n,]+/).map(n => n.trim()).filter(n => n.length > 0);
-            
-            if (photoInput.files && photoInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const photoUrl = e.target.result;
-                    names.forEach((name, index) => {
-                        const newId = 's_new_' + Date.now() + '_' + index;
-                        staffPool.push({ id: newId, name, role, photo: photoUrl });
-                    });
-                    finalizeAddStaff();
-                };
-                reader.readAsDataURL(photoInput.files[0]);
-            } else {
-                names.forEach((name, index) => {
-                    const newId = 's_new_' + Date.now() + '_' + index;
-                    staffPool.push({ id: newId, name, role, photo: '' });
-                });
-                finalizeAddStaff();
-            }
-        }
-
-        function finalizeAddStaff() {
-            closeAddStaffModal();
-            updateTotalCount();
-            if (currentTab === 'board') {
-                renderStaffPool();
-                renderSupervisors();
-            } else if (currentTab === 'staff') {
-                renderStaffManagementTable();
-            } else if (currentTab === 'monitor') {
-                renderMonitorView();
-            }
-        }
-
-        function promptDeleteStaff(staffId) {
-            staffToDeleteId = staffId;
-            const staff = staffPool.find(s => s.id === staffId);
-            if (staff) {
-                document.getElementById('delete-modal-text').textContent = `「${staff.name}」さんをスタッフから削除しますか？`;
-            }
+        function promptDeleteStaff(id) {
+            staffToDeleteId = id;
+            const staff = staffPool.find(s => s.id === id);
+            document.getElementById('delete-modal-text').textContent = `スタッフ「${staff ? staff.name : ''}」を削除してもよろしいですか？`;
             document.getElementById('delete-modal').classList.remove('hidden');
             document.getElementById('confirm-delete-btn').onclick = function() {
                 executeDeleteStaff(staffToDeleteId);
@@ -1046,67 +1138,121 @@
             staffToDeleteId = null;
         }
 
-        function executeDeleteStaff(staffId) {
-            staffPool = staffPool.filter(s => s.id !== staffId);
-            
-            boardRows.forEach(row => {
-                Object.keys(row.slots).forEach(k => {
-                    if (row.slots[k] === staffId) row.slots[k] = '';
+        function executeDeleteStaff(id) {
+            staffPool = staffPool.filter(s => s.id !== id);
+            boardRows.forEach(r => {
+                Object.keys(r.slots).forEach(k => {
+                    if (r.slots[k] === id) r.slots[k] = '';
                 });
             });
             supervisorsData.forEach(sup => {
-                if (sup.staffId === staffId) sup.staffId = '';
+                if (sup.staffId === id) sup.staffId = '';
             });
-
             closeDeleteModal();
-            updateTotalCount();
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            renderStaffManagementTable();
+            autoSync();
+            showNotification('スタッフを削除しました。');
+        }
+
+        function openAddStaffModal() {
+            document.getElementById('new-staff-names').value = '';
+            document.getElementById('new-staff-photo').value = '';
+            document.getElementById('add-staff-modal').classList.remove('hidden');
+        }
+
+        function closeAddStaffModal() {
+            document.getElementById('add-staff-modal').classList.add('hidden');
+        }
+
+        function confirmAddStaff() {
+            const namesRaw = document.getElementById('new-staff-names').value.trim();
+            const role = document.getElementById('new-staff-role').value;
+            const photoInput = document.getElementById('new-staff-photo');
+
+            if (!namesRaw) {
+                showNotification('スタッフ名を入力してください。');
+                return;
+            }
+
+            const names = namesRaw.split(/[\n,]/).map(n => n.trim()).filter(n => n.length > 0);
             
-            if (currentTab === 'board') {
+            const processAdd = (photoData = '') => {
+                names.forEach((name, idx) => {
+                    const newId = 's_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + idx;
+                    staffPool.push({ id: newId, name: name, role: role, photo: photoData });
+                });
+                closeAddStaffModal();
                 renderStaffPool();
-                renderBoardRows();
-                renderSupervisors();
-            } else if (currentTab === 'staff') {
                 renderStaffManagementTable();
-            } else if (currentTab === 'monitor') {
-                renderMonitorView();
+                autoSync();
+                showNotification(`${names.length}名のスタッフを追加しました！`);
+            };
+
+            if (photoInput.files && photoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    processAdd(e.target.result);
+                };
+                reader.readAsDataURL(photoInput.files[0]);
+            } else {
+                processAdd('');
             }
         }
 
+        let uploadedAiImage = null;
+
         function openAiModal() {
+            document.getElementById('ai-file-input').value = '';
+            document.getElementById('ai-loading').classList.add('hidden');
+            document.getElementById('ai-result-box').classList.add('hidden');
+            document.getElementById('apply-ai-btn').disabled = true;
+            document.getElementById('upload-preview-area').innerHTML = `
+                <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-500 mb-2"></i>
+                <p class="text-xs font-semibold text-slate-700">クリックしてホワイトボード画像を選択</p>
+                <p class="text-[10px] text-slate-400 mt-1">PNG, JPG (最大 10MB)</p>
+            `;
             document.getElementById('ai-modal').classList.remove('hidden');
         }
 
         function closeAiModal() {
             document.getElementById('ai-modal').classList.add('hidden');
-            document.getElementById('ai-loading').classList.add('hidden');
-            document.getElementById('ai-result-box').classList.add('hidden');
-            document.getElementById('apply-ai-btn').disabled = true;
         }
 
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedAiImage = e.target.result;
+                document.getElementById('upload-preview-area').innerHTML = `
+                    <img src="${uploadedAiImage}" class="h-28 mx-auto rounded-lg object-contain mb-2 border border-slate-200">
+                    <p class="text-xs font-semibold text-indigo-600">画像が選択されました。解析を開始します...</p>
+                `;
+                simulateAiAnalysis();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function simulateAiAnalysis() {
             document.getElementById('ai-loading').classList.remove('hidden');
-            
             setTimeout(() => {
                 document.getElementById('ai-loading').classList.add('hidden');
                 document.getElementById('ai-result-box').classList.remove('hidden');
-                document.getElementById('ai-result-text').textContent = `「${file.name}」を解析しました。ホワイトボードのスタッフ名および配置状態を正常に認識しました。`;
                 document.getElementById('apply-ai-btn').disabled = false;
-            }, 2000);
+            }, 1800);
         }
 
         function applyAiResults() {
             closeAiModal();
-        }
-
-        function saveData() {
-            const alertBox = document.createElement('div');
-            alertBox.className = 'fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl z-50 flex items-center space-x-2 text-xs font-bold border border-slate-700';
-            alertBox.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400 text-base"></i><span>配置データを保存しました。</span>';
-            document.body.appendChild(alertBox);
-            setTimeout(() => alertBox.remove(), 2500);
+            showNotification('AI解析によりボードの配置が正常に更新されました！');
+            renderStaffPool();
+            renderBoardRows();
+            renderSupervisors();
+            autoSync();
         }
     </script>
 </body>

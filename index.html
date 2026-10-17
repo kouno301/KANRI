@@ -21,7 +21,7 @@
             position: relative;
         }
 
-        /* モニター表示用のスロットボックス（均一な高さを確保し、写真を枠いっぱいに表示） */
+        /* モニター表示用のスロットボックス */
         .monitor-slot-box {
             height: 100%;
             width: 100%;
@@ -30,7 +30,6 @@
             overflow: hidden;
             border-radius: 8px;
             background-color: #f1f5f9;
-            min-height: 85px;
         }
 
         /* モニター表示の右側 監督者・リーダー用スロットボックス */
@@ -42,7 +41,6 @@
             overflow: hidden;
             border-radius: 8px;
             background-color: #f1f5f9;
-            min-height: 75px;
         }
     </style>
 </head>
@@ -93,21 +91,21 @@
             <div class="flex items-center space-x-3">
                 <!-- Navigation Tabs -->
                 <div class="bg-slate-800 p-1 rounded-xl flex space-x-1 border border-slate-700">
-                    <button onclick="switchTab('board')" id="tab-btn-board" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer">
+                    <button onclick="window.switchTab('board')" id="tab-btn-board" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer">
                         <i class="fa-solid fa-chalkboard mr-1"></i>配置ボード
                     </button>
-                    <button onclick="switchTab('staff')" id="tab-btn-staff" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
+                    <button onclick="window.switchTab('staff')" id="tab-btn-staff" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
                         <i class="fa-solid fa-users-gear mr-1"></i>メンバー管理・削除
                     </button>
-                    <button onclick="switchTab('monitor')" id="tab-btn-monitor" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
+                    <button onclick="window.switchTab('monitor')" id="tab-btn-monitor" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
                         <i class="fa-solid fa-desktop mr-1"></i>モニター表示
                     </button>
                 </div>
 
-                <!-- Date Picker (Calendar icon forced white) -->
+                <!-- Date Picker -->
                 <div class="flex items-center bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 relative">
                     <i class="fa-regular fa-calendar text-white mr-2 pointer-events-none"></i>
-                    <input type="date" id="board-date" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark]" value="2026-10-15" onchange="onDateChange()">
+                    <input type="date" id="board-date" class="bg-transparent text-white text-sm focus:outline-none cursor-pointer [color-scheme:dark]" value="2026-10-15" onchange="window.onDateChange()">
                 </div>
 
                 <!-- Total Count Badge -->
@@ -119,11 +117,11 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <button onclick="openAiModal()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
+                <button onclick="window.openAiModal()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
                     <span>AIボード解析</span>
                 </button>
-                <button onclick="saveData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
+                <button onclick="window.saveData()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium shadow flex items-center space-x-1.5 transition cursor-pointer">
                     <i class="fa-solid fa-floppy-disk"></i>
                     <span>クラウド保存</span>
                 </button>
@@ -133,6 +131,12 @@
 
     <main class="hidden flex-1 w-full mx-auto p-4 md:p-6 flex flex-col" id="main-container">
         
+        <!-- Toast Notification Area -->
+        <div id="toast-notification" class="fixed top-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 transform translate-y-[-100px] opacity-0 flex items-center space-x-2 border border-slate-700">
+            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toast-message" class="text-xs font-semibold"></span>
+        </div>
+
         <!-- Tab 1: Assignment Board -->
         <div id="view-board" class="max-w-[1800px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-5">
             
@@ -143,17 +147,17 @@
                         <h2 class="font-bold text-slate-800 flex items-center text-xs">
                             <i class="fa-solid fa-users text-blue-600 mr-1.5"></i>スタッフ (<span id="pool-count">0</span>)
                         </h2>
-                        <button onclick="openAddStaffModal()" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-2 py-1 rounded-lg transition shadow-sm cursor-pointer">
+                        <button onclick="window.openAddStaffModal()" class="text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-2 py-1 rounded-lg transition shadow-sm cursor-pointer">
                             <i class="fa-solid fa-user-plus mr-0.5"></i>追加
                         </button>
                     </div>
                     
                     <div class="relative mb-3">
                         <i class="fa-solid fa-search absolute left-2.5 top-2.5 text-xs text-slate-400"></i>
-                        <input type="text" id="staff-search" placeholder="検索..." oninput="filterStaffPool()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="staff-search" placeholder="検索..." oninput="window.filterStaffPool()" class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
-                    <div id="staff-pool" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]" ondragover="allowDrop(event)" ondrop="dropToPool(event)">
+                    <div id="staff-pool" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[300px]" ondragover="window.allowDrop(event)" ondrop="window.dropToPool(event)">
                         <!-- Dynamically populated staff chips -->
                     </div>
                     <p class="text-[10px] text-slate-400 mt-2 text-center">※ドラッグ＆ドロップで配置</p>
@@ -193,9 +197,9 @@
                                     <th class="p-2.5 text-center">朝 2</th>
                                     <th class="p-2.5 text-center">夜 1</th>
                                     <th class="p-2.5 text-center">夜 2</th>
-                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToInspectionHeader(event)">出荷検査</th>
-                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToExtHeader(event, 1)">外部 1</th>
-                                    <th class="p-2.5 text-center" ondragover="allowDrop(event)" ondrop="dropToExtHeader(event, 2)">外部 2</th>
+                                    <th class="p-2.5 text-center">出荷検査</th>
+                                    <th class="p-2.5 text-center">外部 1</th>
+                                    <th class="p-2.5 text-center">外部 2</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-200 text-xs" id="board-rows">
@@ -231,7 +235,7 @@
                         <p class="text-xs text-slate-500 mt-1">工場に登録されているすべてのスタッフの確認、役職変更、顔写真登録、およびメンバーの削除が行えます。</p>
                     </div>
                     <div class="flex items-center space-x-3">
-                        <button onclick="openAddStaffModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition cursor-pointer">
+                        <button onclick="window.openAddStaffModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow flex items-center space-x-1.5 transition cursor-pointer">
                             <i class="fa-solid fa-user-plus"></i>
                             <span>新規メンバーを追加</span>
                         </button>
@@ -241,7 +245,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div class="relative w-72">
                         <i class="fa-solid fa-search absolute left-3 top-3 text-xs text-slate-400"></i>
-                        <input type="text" id="sheet-staff-search" placeholder="スタッフ名で検索..." oninput="renderStaffManagementTable()" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="sheet-staff-search" placeholder="スタッフ名で検索..." oninput="window.renderStaffManagementTable()" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <span class="text-xs font-semibold text-slate-600">登録総数: <span id="sheet-total-count" class="text-blue-600 font-bold">0</span>名</span>
                 </div>
@@ -267,90 +271,83 @@
             </div>
         </div>
 
-        <!-- Tab 3: White-themed Monitor View with Full-Size Staff Photos fitting screen -->
-        <div id="view-monitor" class="hidden w-full flex-1 flex flex-col">
-            <div class="bg-white text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-4 md:p-6 w-full flex-1 flex flex-col h-full">
-                
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 w-full flex-1 items-stretch">
+        <!-- Tab 3: Monitor View -->
+        <div id="view-monitor" class="hidden w-full flex-1 flex flex-col min-h-0 h-[calc(100vh-80px)] overflow-hidden">
+            <div class="bg-slate-50 text-slate-800 rounded-2xl shadow-xl border border-slate-200 p-3 md:p-4 w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full flex-1 items-stretch h-full min-h-0">
                     
                     <!-- Left Vertical Sidebar (1 col) -->
-                    <div class="lg:col-span-1 flex flex-col gap-3 justify-between">
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
+                    <div class="lg:col-span-1 flex flex-col gap-2 justify-between h-full min-h-0 shrink-0">
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
                             <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow mb-2">
                                 <i class="fa-solid fa-calendar text-base"></i>
                             </div>
-                            <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">日付</span>
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">日付</span>
                             <span id="monitor-date-display" class="text-xs font-bold text-slate-800 leading-snug">2026年<br>10月15日</span>
                         </div>
 
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center text-center shadow-sm flex-1 justify-center">
                             <div class="bg-emerald-600 text-white p-2.5 rounded-xl shadow mb-2">
                                 <i class="fa-solid fa-users text-base"></i>
                             </div>
-                            <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">総人員</span>
-                            <span class="text-base font-extrabold text-slate-800"><span id="monitor-total-count" class="text-blue-600">26</span>名</span>
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">総人員</span>
+                            <span class="text-lg font-black text-slate-800"><span id="monitor-total-count" class="text-blue-600">0</span>名</span>
                         </div>
 
-                        <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 text-center shrink-0">
-                            <span class="text-[9px] text-slate-500 font-bold block">工場モニター<br>ライブ表示</span>
+                        <div class="bg-white border border-slate-200 rounded-xl p-2 text-center shrink-0">
+                            <span class="text-[9px] text-emerald-600 font-bold block flex items-center justify-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> リアルタイム表示
+                            </span>
                         </div>
                     </div>
 
-                    <!-- Main Monitor Board Table (9.5 cols) -->
-                    <div class="lg:col-span-9 bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col flex-1">
-                        <div class="bg-slate-900 text-white px-4 py-3 border-b border-slate-800 font-bold text-xs flex justify-between items-center shrink-0">
+                    <!-- Main Monitor Board Table (9 cols) -->
+                    <div class="lg:col-span-9 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm flex flex-col flex-1 h-full min-h-0">
+                        <div class="bg-slate-800 text-white px-4 py-2.5 border-b border-slate-700 font-bold text-xs flex justify-between items-center shrink-0">
                             <div class="flex items-center space-x-2">
                                 <i class="fa-solid fa-industry text-blue-400 text-sm"></i>
-                                <span class="text-slate-100 text-sm">101〜106号機 / みずすまし / 出荷検査・外部派遣</span>
+                                <span class="text-slate-100 text-xs md:text-sm tracking-wide">101〜106号機 / みずすまし / 出荷検査・外部派遣</span>
                             </div>
-                            <div class="flex space-x-2 text-[11px] text-slate-300 font-medium">
-                                <span class="bg-slate-800 border border-slate-700 px-3 py-1 rounded-md">朝シフト</span>
-                                <span class="bg-slate-800 border border-slate-700 px-3 py-1 rounded-md">夜シフト</span>
+                            <div class="flex space-x-2 text-[11px] font-medium">
+                                <span class="bg-slate-700 border border-slate-600 px-2.5 py-0.5 rounded-md text-blue-300">朝シフト</span>
+                                <span class="bg-slate-700 border border-slate-600 px-2.5 py-0.5 rounded-md text-indigo-300">夜シフト</span>
                             </div>
                         </div>
-                        <div class="overflow-x-auto w-full flex-1 flex flex-col">
-                            <table class="w-full text-left border-collapse table-fixed h-full" id="monitor-assignment-table">
-                                <colgroup>
-                                    <col style="width: 140px;">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                    <col style="width: calc((100% - 140px) / 7);">
-                                </colgroup>
-                                <thead>
-                                    <tr class="bg-slate-200/80 border-b border-slate-300 text-xs font-semibold text-slate-700">
-                                        <th class="p-2.5 text-center">工程・機械</th>
-                                        <th class="p-2.5 text-center">朝 1</th>
-                                        <th class="p-2.5 text-center">朝 2</th>
-                                        <th class="p-2.5 text-center">夜 1</th>
-                                        <th class="p-2.5 text-center">夜 2</th>
-                                        <th class="p-2.5 text-center">出荷検査</th>
-                                        <th class="p-2.5 text-center">外部 1</th>
-                                        <th class="p-2.5 text-center">外部 2</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-200 text-xs" id="monitor-board-rows">
-                                    <!-- Populated via JS -->
-                                </tbody>
-                            </table>
+
+                        <!-- Monitor Full Table Wrapper -->
+                        <div class="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
+                            <!-- Header Row -->
+                            <div class="grid grid-cols-12 bg-slate-100 text-slate-600 border-b border-slate-200 text-xs font-bold text-center h-8 shrink-0 items-center">
+                                <div class="col-span-2 text-slate-700 border-r border-slate-200 py-1">工程・機械</div>
+                                <div class="col-span-10 grid grid-cols-7 h-full">
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">朝 1</div>
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">朝 2</div>
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">夜 1</div>
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">夜 2</div>
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">出荷検査</div>
+                                    <div class="border-r border-slate-200 py-1 flex items-center justify-center">外部 1</div>
+                                    <div class="py-1 flex items-center justify-center">外部 2</div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Rows Container -->
+                            <div id="monitor-rows-container" class="flex-1 flex flex-col h-full min-h-0 divide-y divide-slate-200">
+                                <!-- JS Populated Uniform Grid Rows -->
+                            </div>
                         </div>
                     </div>
 
                     <!-- Right Side Supervisor & Leader Column (2 cols) -->
-                    <div class="lg:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between flex-1">
-                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 flex items-center justify-center border-b border-slate-200 pb-2 shrink-0">
+                    <div class="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-2.5 flex flex-col h-full min-h-0 shadow-sm">
+                        <h3 class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 flex items-center justify-center border-b border-slate-100 pb-2 shrink-0">
                             <i class="fa-solid fa-user-tie mr-1.5 text-indigo-600"></i>監督者・リーダー
                         </h3>
-                        <div class="flex flex-col gap-2.5 flex-1 justify-around h-full" id="monitor-supervisors-container">
-                            <!-- Populated via JS -->
+                        <div class="flex flex-col gap-2 flex-1 h-full min-h-0" id="monitor-supervisors-container">
+                            <!-- JS Populated Supervisor Slots -->
                         </div>
                     </div>
 
                 </div>
-
             </div>
         </div>
 
@@ -363,13 +360,13 @@
                 <h3 class="font-bold text-base flex items-center">
                     <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>AIボード・写真解析
                 </h3>
-                <button onclick="closeAiModal()" class="text-white/80 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="window.closeAiModal()" class="text-white/80 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <p class="text-xs text-slate-600">ホワイトボードの写真をアップロードすると、Gemini AIが自動でスタッフ名や配置状態を読み取り、ボードに反映します。</p>
                 
                 <div class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-indigo-500 transition cursor-pointer relative" onclick="document.getElementById('ai-file-input').click()">
-                    <input type="file" id="ai-file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                    <input type="file" id="ai-file-input" accept="image/*" class="hidden" onchange="window.handleImageUpload(event)">
                     <div id="upload-preview-area">
                         <i class="fa-solid fa-cloud-arrow-up text-3xl text-indigo-500 mb-2"></i>
                         <p class="text-xs font-semibold text-slate-700">クリックしてホワイトボード画像を選択</p>
@@ -388,8 +385,8 @@
                 </div>
             </div>
             <div class="bg-slate-50 px-6 py-3 flex justify-end space-x-2 border-t border-slate-100">
-                <button onclick="closeAiModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
-                <button id="apply-ai-btn" onclick="applyAiResults()" disabled class="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">適用する</button>
+                <button onclick="window.closeAiModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button id="apply-ai-btn" onclick="window.applyAiResults()" disabled class="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">適用する</button>
             </div>
         </div>
     </div>
@@ -401,7 +398,7 @@
                 <h3 class="font-bold text-base flex items-center">
                     <i class="fa-solid fa-user-plus mr-2"></i>新規メンバー追加
                 </h3>
-                <button onclick="closeAddStaffModal()" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button onclick="window.closeAddStaffModal()" class="text-slate-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <div>
@@ -423,8 +420,8 @@
                 </div>
             </div>
             <div class="bg-slate-50 px-6 py-3 flex justify-end space-x-2 border-t border-slate-100">
-                <button onclick="closeAddStaffModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
-                <button onclick="confirmAddStaff()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow cursor-pointer">追加する</button>
+                <button onclick="window.closeAddStaffModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button onclick="window.confirmAddStaff()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow cursor-pointer">追加する</button>
             </div>
         </div>
     </div>
@@ -438,7 +435,7 @@
             <h3 class="font-bold text-slate-800 text-base mb-1">スタッフの削除</h3>
             <p id="delete-modal-text" class="text-xs text-slate-500 mb-5">このスタッフを削除してもよろしいですか？</p>
             <div class="flex justify-center space-x-3">
-                <button onclick="closeDeleteModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
+                <button onclick="window.closeDeleteModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer">キャンセル</button>
                 <button id="confirm-delete-btn" class="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition shadow cursor-pointer">削除する</button>
             </div>
         </div>
@@ -454,7 +451,6 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBye1Fnx7JIAdwbGSaltp2mV40kNZEQzZY",
             authDomain: "kanri-8c69e.firebaseapp.com",
@@ -482,11 +478,22 @@
             const errorEl = document.getElementById('login-error');
             errorEl.textContent = '';
 
+            if (!email || !password) {
+                errorEl.textContent = 'メールアドレスとパスワードの両方を入力してください。';
+                return;
+            }
+
             try {
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
                 console.error(error);
-                errorEl.textContent = 'ログインできませんでした。メールアドレスとパスワードを確認してください。';
+                if (error.code === 'auth/missing-password' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    errorEl.textContent = 'メールアドレスまたはパスワードが正しくありません。';
+                } else if (error.code === 'auth/user-not-found') {
+                    errorEl.textContent = '登録されているユーザーが見つかりません。';
+                } else {
+                    errorEl.textContent = 'ログインできませんでした。入力内容を確認してください。';
+                }
             }
         };
 
@@ -513,7 +520,7 @@
                 if (error.code === 'auth/email-already-in-use') {
                     errorEl.textContent = 'このメールアドレスは登録済みです。ログインしてください。';
                 } else {
-                    errorEl.textContent = '新規登録に失敗しました。入力内容とFirebaseの設定を確認してください。';
+                    errorEl.textContent = '新規登録に失敗しました。入力内容を確認してください。';
                 }
             }
         };
@@ -537,11 +544,6 @@
                 main.classList.add('hidden');
             }
         });
-
-        function getBoardDocRef() {
-            const dateVal = document.getElementById('board-date').value || '2026-10-15';
-            return doc(db, 'artifacts', window.appId, 'public', 'data', 'assignments', dateVal);
-        }
 
         let unsubscribe = null;
 
@@ -611,355 +613,160 @@
     </script>
 
     <script>
+        // State Variables
         let staffPool = [
-            { id: 's1', name: 'スガイ', role: '作業者', photo: '' },
-            { id: 's2', name: 'タイ', role: '作業者', photo: '' },
-            { id: 's3', name: 'スイ', role: '作業者', photo: '' },
-            { id: 's4', name: 'キック', role: '作業者', photo: '' },
-            { id: 's5', name: 'ワン', role: '作業者', photo: '' },
-            { id: 's6', name: 'セン', role: '作業者', photo: '' },
-            { id: 's7', name: 'イ', role: '作業者', photo: '' },
-            { id: 's8', name: 'ヒカリ', role: '作業者', photo: '' },
-            { id: 's9', name: 'リシ', role: '作業者', photo: '' },
-            { id: 's10', name: 'アイン', role: '作業者', photo: '' },
-            { id: 's11', name: 'ハン', role: '作業者', photo: '' },
-            { id: 's12', name: 'ヌア', role: '作業者', photo: '' },
-            { id: 's13', name: 'キュン', role: '作業者', photo: '' },
-            { id: 's14', name: 'ツイン', role: '作業者', photo: '' },
-            { id: 's15', name: 'ツイン フェン', role: '作業者', photo: '' },
-            { id: 's16', name: 'ズン', role: '作業者', photo: '' },
-            { id: 's17', name: 'ツアン', role: '作業者', photo: '' },
-            { id: 's18', name: 'マイン', role: '作業者', photo: '' },
-            { id: 's19', name: 'テツシット', role: '作業者', photo: '' },
-            { id: 's20', name: 'ダット', role: '作業者', photo: '' },
-            { id: 's21', name: 'チェン', role: '作業者', photo: '' },
-            { id: 's22', name: 'トシ', role: '作業者', photo: '' },
-            { id: 's23', name: 'ナアナ', role: '作業者', photo: '' },
-            { id: 'sup_s1', name: '森', role: 'リーダー', photo: '' },
-            { id: 'sup_s2', name: '佐藤', role: 'リーダー', photo: '' },
-            { id: 'ext_s1', name: '外部派遣', role: '外部協力者', photo: '' }
+            { id: 's1', name: '佐藤 一郎', role: '作業者', photo: '' },
+            { id: 's2', name: '鈴木 健太', role: '作業者', photo: '' },
+            { id: 's3', name: '高橋 美咲', role: 'リーダー', photo: '' },
+            { id: 's4', name: '田中 直樹', role: '監督者', photo: '' },
+            { id: 's5', name: '伊藤 蓮', role: '作業者', photo: '' },
+            { id: 's6', name: '渡辺 葵', role: '作業者', photo: '' },
+            { id: 's7', name: '山本 拓海', role: '作業者', photo: '' },
+            { id: 's8', name: '中村 陽菜', role: '作業者', photo: '' }
         ];
 
         let boardRows = [
-            { id: 'r1', machine: '101号機 (650t)', slots: { morning1: 's1', morning2: 's2', night1: 's3', night2: 's4', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r2', machine: '102号機 (850t)', slots: { morning1: 's5', morning2: 's6', night1: 's7', night2: 's8', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r3', machine: '103号機 (650t)', slots: { morning1: 's9', morning2: 's10', night1: 's11', night2: 's12', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r4', machine: '104号機 (850t)', slots: { morning1: 's13', morning2: 's14', night1: 's15', night2: 's16', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r5', machine: 'みずすまし', slots: { morning1: 's17', morning2: '', night1: 's18', night2: '', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r6', machine: '105号機 (650t)', slots: { morning1: '', morning2: '', night1: 's19', night2: '', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r7', machine: '106号機 (650t)', slots: { morning1: 's20', morning2: '', night1: 's21', night2: '', inspection: '', ext1: '', ext2: '' } },
-            { id: 'r8', machine: 'みずすまし 2', slots: { morning1: 's22', morning2: '', night1: 's23', night2: '', inspection: '', ext1: '', ext2: '' } }
+            { id: 'r101', machine: '101号機', slots: { morning1: 's1', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r102', machine: '102号機', slots: { morning1: 's2', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r103', machine: '103号機', slots: { morning1: '', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r104', machine: '104号機', slots: { morning1: '', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r105', machine: '105号機', slots: { morning1: '', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'r106', machine: '106号機', slots: { morning1: '', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'rm1', machine: 'みずすまし 1', slots: { morning1: 's5', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } },
+            { id: 'rm2', machine: 'みずすまし 2', slots: { morning1: '', morning2: '', night1: '', night2: '', inspection: '', ext1: '', ext2: '' } }
         ];
 
         let supervisorsData = [
-            { id: 'sup_1', title: '監督者 1', staffId: '' },
-            { id: 'sup_2', title: '監督者 2', staffId: '' },
-            { id: 'lead_1', title: '1勤 リーダー', staffId: 'sup_s1' },
-            { id: 'lead_2', title: '2勤 リーダー', staffId: 'sup_s2' },
-            { id: 'lead_3', title: '3勤 リーダー', staffId: '' }
+            { id: 'sup1', title: '朝勤 監督者', staffId: 's4' },
+            { id: 'sup2', title: '朝勤 リーダー', staffId: 's3' },
+            { id: 'sup3', title: '夜勤 監督者', staffId: '' },
+            { id: 'sup4', title: '夜勤 リーダー', staffId: '' }
         ];
 
         let currentTab = 'board';
         let staffToDeleteId = null;
 
+        // Sync with window scope for module accessibility
         window.staffPool = staffPool;
         window.boardRows = boardRows;
         window.supervisorsData = supervisorsData;
-        
+        window.currentTab = currentTab;
+
         window.updateStaffPoolFromCloud = function(data) {
             staffPool = data;
+            window.staffPool = data;
         };
 
         window.updateBoardRowsFromCloud = function(data) {
             boardRows = data;
+            window.boardRows = data;
         };
 
         window.updateSupervisorsFromCloud = function(data) {
             supervisorsData = data;
+            window.supervisorsData = data;
         };
 
-        window.currentTab = currentTab;
+        // Navigation
+        window.switchTab = function(tabName) {
+            currentTab = tabName;
+            window.currentTab = tabName;
 
-        window.onload = function() {
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            updateTotalCount();
+            ['board', 'staff', 'monitor'].forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabName) {
+                    view.classList.remove('hidden');
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer";
+                } else {
+                    view.classList.add('hidden');
+                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer";
+                }
+            });
+
+            if (tabName === 'board') {
+                window.renderStaffPool();
+                window.renderBoardRows();
+                window.renderSupervisors();
+            } else if (tabName === 'staff') {
+                window.renderStaffManagementTable();
+            } else if (tabName === 'monitor') {
+                window.renderMonitorView();
+            }
         };
 
-        function onDateChange() {
-            if (window.setupRealtimeSync) {
+        window.onDateChange = function() {
+            if (typeof window.setupRealtimeSync === 'function') {
                 window.setupRealtimeSync();
             }
-            if (currentTab === 'monitor') {
-                renderMonitorView();
-            }
-        }
+        };
 
-        function saveData() {
-            if (window.saveDataToFirestore) {
-                window.saveDataToFirestore();
-            } else {
-                showNotification('ローカル保存を行いました');
-            }
-        }
-
-        function showNotification(msg) {
-            const div = document.createElement('div');
-            div.className = 'fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl z-50 text-xs font-bold flex items-center space-x-2 animate-bounce';
-            div.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span>${msg}</span>`;
-            document.body.appendChild(div);
-            setTimeout(() => div.remove(), 3000);
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            window.currentTab = tab;
-            const viewBoard = document.getElementById('view-board');
-            const viewStaff = document.getElementById('view-staff');
-            const viewMonitor = document.getElementById('view-monitor');
-            
-            const btnBoard = document.getElementById('tab-btn-board');
-            const btnStaff = document.getElementById('tab-btn-staff');
-            const btnMonitor = document.getElementById('tab-btn-monitor');
-
-            viewBoard.classList.add('hidden');
-            viewStaff.classList.add('hidden');
-            viewMonitor.classList.add('hidden');
-
-            btnBoard.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
-            btnStaff.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
-            btnMonitor.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer';
-
-            if (tab === 'board') {
-                viewBoard.classList.remove('hidden');
-                btnBoard.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
-                renderStaffPool();
-                renderBoardRows();
-                renderSupervisors();
-            } else if (tab === 'staff') {
-                viewStaff.classList.remove('hidden');
-                btnStaff.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
-                renderStaffManagementTable();
-            } else if (tab === 'monitor') {
-                viewMonitor.classList.remove('hidden');
-                btnMonitor.className = 'px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition cursor-pointer';
-                renderMonitorView();
-            }
-        }
-
-        // Auto sync helper after drag/drop or editing
-        function autoSync() {
-            if (window.saveDataToFirestore) {
-                window.saveDataToFirestore();
-            }
-        }
-
-        // Rest of rendering and handlers
-        function getAssignedIds() {
-            const assignedIds = new Set();
-            boardRows.forEach(row => {
-                Object.values(row.slots).forEach(id => {
-                    if (id) assignedIds.add(id);
-                });
+        window.getAssignedIds = function() {
+            const assigned = new Set();
+            boardRows.forEach(r => {
+                Object.values(r.slots).forEach(id => { if (id) assigned.add(id); });
             });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId) assignedIds.add(sup.staffId);
-            });
-            return assignedIds;
-        }
+            supervisorsData.forEach(s => { if (s.staffId) assigned.add(s.staffId); });
+            return assigned;
+        };
 
-        function updateTotalCount() {
-            const countEl = document.getElementById('total-staff-count');
-            if (countEl) countEl.textContent = staffPool.length;
-        }
+        window.updateTotalCount = function() {
+            const count = staffPool.length;
+            const el = document.getElementById('total-staff-count');
+            if (el) el.textContent = count;
+            const poolEl = document.getElementById('pool-count');
+            if (poolEl) poolEl.textContent = staffPool.filter(s => !window.getAssignedIds().has(s.id)).length;
+        };
 
-        function renderStaffPool(filter = '') {
+        // Render Functions
+        window.renderStaffPool = function() {
             const poolEl = document.getElementById('staff-pool');
             if (!poolEl) return;
             poolEl.innerHTML = '';
-            
-            const assignedIds = getAssignedIds();
-            const unassigned = staffPool.filter(s => !assignedIds.has(s.id));
-            const filtered = unassigned.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
-            
-            document.getElementById('pool-count').textContent = staffPool.length;
-            updateTotalCount();
 
-            if (filtered.length === 0) {
-                poolEl.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">未配置のスタッフはありません<br><span class="text-[10px]">(全員配置済み)</span></div>`;
-                return;
-            }
+            const query = document.getElementById('staff-search') ? document.getElementById('staff-search').value.toLowerCase() : '';
+            const assignedIds = window.getAssignedIds();
 
-            filtered.forEach(staff => {
-                const item = document.createElement('div');
-                item.className = 'bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition shadow-sm';
-                item.draggable = true;
-                item.ondragstart = (e) => drag(e, staff.id);
-                
-                let avatarHtml = staff.photo 
-                    ? `<img src="${staff.photo}" class="w-10 h-10 rounded-lg object-cover shrink-0 border border-slate-200 shadow-sm">`
-                    : `<div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-200 shadow-sm">${staff.name.charAt(0)}</div>`;
+            staffPool.forEach(staff => {
+                if (assignedIds.has(staff.id)) return;
+                if (query && !staff.name.toLowerCase().includes(query)) return;
 
-                item.innerHTML = `
-                    <div class="flex items-center space-x-2.5 overflow-hidden flex-1 pointer-events-none">
-                        ${avatarHtml}
-                        <span class="text-xs font-bold text-slate-800 truncate">${staff.name}</span>
-                    </div>
-                    <div class="flex items-center space-x-1 shrink-0 ml-1">
-                        <button type="button" onclick="promptDeleteStaff('${staff.id}'); event.stopPropagation();" class="text-slate-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition cursor-pointer" title="削除">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
+                const chip = document.createElement('div');
+                chip.draggable = true;
+                chip.ondragstart = (e) => window.dragStart(e, staff.id);
+                chip.className = "bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl p-2 flex items-center space-x-2 cursor-grab active:cursor-grabbing transition shadow-sm group";
+
+                let avatar = staff.photo
+                    ? `<img src="${staff.photo}" class="w-7 h-7 rounded-lg object-cover border border-slate-200">`
+                    : `<div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-200">${staff.name.charAt(0)}</div>`;
+
+                chip.innerHTML = `
+                    ${avatar}
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-slate-700 truncate group-hover:text-blue-600">${staff.name}</p>
+                        <p class="text-[10px] text-slate-400">${staff.role}</p>
                     </div>
                 `;
-                poolEl.appendChild(item);
-            });
-        }
-
-        function filterStaffPool() {
-            const query = document.getElementById('staff-search').value;
-            renderStaffPool(query);
-        }
-
-        function drag(ev, staffId) {
-            ev.dataTransfer.setData('text/plain', staffId);
-        }
-
-        function allowDrop(ev) {
-            ev.preventDefault();
-        }
-
-        function dropToSlot(ev, rowId, slotKey) {
-            ev.preventDefault();
-            const staffId = ev.dataTransfer.getData('text/plain');
-            if (!staffId) return;
-
-            boardRows.forEach(r => {
-                Object.keys(r.slots).forEach(k => {
-                    if (r.slots[k] === staffId) r.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === staffId) sup.staffId = '';
+                poolEl.appendChild(chip);
             });
 
-            const targetRow = boardRows.find(r => r.id === rowId);
-            if (targetRow) {
-                targetRow.slots[slotKey] = staffId;
-            }
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            autoSync();
-        }
+            window.updateTotalCount();
+        };
 
-        function dropToSupervisor(ev, supIdx) {
-            ev.preventDefault();
-            const staffId = ev.dataTransfer.getData('text/plain');
-            if (!staffId) return;
-
-            boardRows.forEach(r => {
-                Object.keys(r.slots).forEach(k => {
-                    if (r.slots[k] === staffId) r.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === staffId) sup.staffId = '';
-            });
-
-            if (supervisorsData[supIdx]) {
-                supervisorsData[supIdx].staffId = staffId;
-            }
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            autoSync();
-        }
-
-        function dropToPool(ev) {
-            ev.preventDefault();
-            const staffId = ev.dataTransfer.getData('text/plain');
-            if (!staffId) return;
-
-            boardRows.forEach(r => {
-                Object.keys(r.slots).forEach(k => {
-                    if (r.slots[k] === staffId) r.slots[k] = '';
-                });
-            });
-            supervisorsData.forEach(sup => {
-                if (sup.staffId === staffId) sup.staffId = '';
-            });
-
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            autoSync();
-        }
-
-        function dropToInspectionHeader(ev) {
-            ev.preventDefault();
-            const staffId = ev.dataTransfer.getData('text/plain');
-            if (!staffId) return;
-            for (let r of boardRows) {
-                if (!r.slots.inspection) {
-                    r.slots.inspection = staffId;
-                    break;
-                }
-            }
-            renderStaffPool();
-            renderBoardRows();
-            autoSync();
-        }
-
-        function dropToExtHeader(ev, extNum) {
-            ev.preventDefault();
-            const staffId = ev.dataTransfer.getData('text/plain');
-            if (!staffId) return;
-            const key = extNum === 1 ? 'ext1' : 'ext2';
-            for (let r of boardRows) {
-                if (!r.slots[key]) {
-                    r.slots[key] = staffId;
-                    break;
-                }
-            }
-            renderStaffPool();
-            renderBoardRows();
-            autoSync();
-        }
-
-        function removeStaffFromSlot(rowId, slotKey) {
-            const row = boardRows.find(r => r.id === rowId);
-            if (row) {
-                row.slots[slotKey] = '';
-                renderStaffPool();
-                renderBoardRows();
-                autoSync();
-            }
-        }
-
-        function removeStaffFromSupervisor(supIdx) {
-            if (supervisorsData[supIdx]) {
-                supervisorsData[supIdx].staffId = '';
-                renderStaffPool();
-                renderSupervisors();
-                autoSync();
-            }
-        }
-
-        function renderBoardRows() {
+        window.renderBoardRows = function() {
             const tbody = document.getElementById('board-rows');
             if (!tbody) return;
             tbody.innerHTML = '';
 
-            boardRows.forEach((row) => {
+            boardRows.forEach(row => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50/80 transition';
-                
+                tr.className = "hover:bg-slate-50/50 transition";
+
                 let html = `
-                    <td class="p-2 font-semibold text-slate-700 text-xs bg-slate-50/50 border-r border-slate-200 text-center">
-                        <div class="flex items-center justify-center space-x-1.5 truncate">
-                            <i class="fa-solid fa-gears text-slate-400"></i>
-                            <span class="truncate">${row.machine}</span>
+                    <td class="p-2.5 font-bold text-slate-800 text-xs bg-slate-50/80 border-r border-slate-200 text-center">
+                        <div class="flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-gears text-blue-600 mr-1"></i>
+                            <span>${row.machine}</span>
                         </div>
                     </td>
                 `;
@@ -967,28 +774,28 @@
                 ['morning1', 'morning2', 'night1', 'night2', 'inspection', 'ext1', 'ext2'].forEach(slotKey => {
                     const staffId = row.slots[slotKey];
                     const staff = staffPool.find(s => s.id === staffId);
-                    
+
                     html += `
-                        <td class="p-1 border-r border-slate-200 text-center" ondragover="allowDrop(event)" ondrop="dropToSlot(event, '${row.id}', '${slotKey}')">
-                            <div class="board-slot-box bg-slate-50 border border-dashed border-slate-300 rounded-lg p-1 group transition hover:border-blue-400">
+                        <td class="p-1 border-r border-slate-200 text-center align-middle" ondragover="window.allowDrop(event)" ondrop="window.dropToSlot(event, '${row.id}', '${slotKey}')">
+                            <div class="board-slot-box rounded-xl border border-dashed border-slate-300 hover:border-blue-400 p-1 transition bg-white/50">
                     `;
 
                     if (staff) {
-                        let avatarHtml = staff.photo 
-                            ? `<img src="${staff.photo}" class="w-full h-10 rounded-md object-cover border border-slate-200 shadow-sm mb-0.5">`
-                            : `<div class="w-full h-10 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-200 shadow-sm mb-0.5">${staff.name.charAt(0)}</div>`;
+                        let innerAvatar = staff.photo
+                            ? `<img src="${staff.photo}" class="w-8 h-8 rounded-full object-cover border border-slate-200 mb-0.5">`
+                            : `<div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs mb-0.5">${staff.name.charAt(0)}</div>`;
 
                         html += `
-                            <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none">
-                                ${avatarHtml}
-                                <span class="text-[11px] font-bold text-slate-800 truncate w-full px-0.5 text-center">${staff.name}</span>
+                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full flex flex-col items-center justify-center relative group cursor-grab">
+                                ${innerAvatar}
+                                <span class="text-[11px] font-bold text-slate-800 truncate max-w-full">${staff.name}</span>
+                                <button onclick="window.clearSlot('${row.id}', '${slotKey}')" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
                             </div>
-                            <button onclick="removeStaffFromSlot('${row.id}', '${slotKey}')" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 text-xs px-1 cursor-pointer bg-white/80 rounded" title="配置解除">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
                         `;
                     } else {
-                        html += `<span class="text-[11px] text-slate-400 w-full text-center">-</span>`;
+                        html += `<span class="text-slate-300 text-[10px] pointer-events-none">+ 配置</span>`;
                     }
 
                     html += `
@@ -1000,46 +807,51 @@
                 tr.innerHTML = html;
                 tbody.appendChild(tr);
             });
-        }
+        };
 
-        function renderSupervisors() {
+        window.renderSupervisors = function() {
             const container = document.getElementById('supervisors-container');
             if (!container) return;
             container.innerHTML = '';
 
-            supervisorsData.forEach((sup, idx) => {
+            supervisorsData.forEach(sup => {
                 const staff = staffPool.find(s => s.id === sup.staffId);
-                
-                let avatarHtml = staff && staff.photo 
-                    ? `<img src="${staff.photo}" class="w-full h-10 rounded-md object-cover border border-slate-200 shadow-sm mb-0.5">`
-                    : (staff ? `<div class="w-full h-10 rounded-md bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200 shadow-sm mb-0.5">${staff.name.charAt(0)}</div>` : '');
 
                 const card = document.createElement('div');
-                card.className = 'bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col justify-between shadow-sm';
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center text-center shadow-sm relative";
+                card.ondragover = window.allowDrop;
+                card.ondrop = (e) => window.dropToSupervisor(e, sup.id);
+
+                let avatarHtml = '';
+                if (staff) {
+                    avatarHtml = staff.photo
+                        ? `<img src="${staff.photo}" class="w-12 h-12 rounded-full object-cover border-2 border-indigo-500 mb-1">`
+                        : `<div class="w-12 h-12 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm mb-1">${staff.name.charAt(0)}</div>`;
+                }
+
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-xs font-bold text-slate-700 truncate"><i class="fa-solid fa-shield-halved text-indigo-500 mr-1.5"></i>${sup.title}</span>
-                    </div>
-                    <div class="board-slot-box bg-white border border-dashed border-slate-300 rounded-lg p-1 group transition hover:border-indigo-400 shadow-sm relative"
-                         ondragover="allowDrop(event)" ondrop="dropToSupervisor(event, ${idx})">
+                    <span class="text-[11px] font-bold text-indigo-700 mb-1 flex items-center">
+                        <i class="fa-solid fa-shield-halved mr-1"></i>${sup.title}
+                    </span>
+                    <div class="w-full flex flex-col items-center justify-center min-h-[60px]">
                         ${staff ? `
-                            <div class="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+                            <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="relative group cursor-grab flex flex-col items-center w-full">
                                 ${avatarHtml}
-                                <span class="text-[11px] font-bold text-slate-800 truncate w-full px-1 text-center">${staff.name}</span>
+                                <span class="text-xs font-bold text-slate-800">${staff.name}</span>
+                                <button onclick="window.clearSupervisor('${sup.id}')" class="absolute top-0 right-2 bg-red-500 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
                             </div>
-                            <button onclick="removeStaffFromSupervisor(${idx})" class="absolute top-1 right-1 text-slate-400 hover:text-red-500 text-xs px-1 cursor-pointer bg-white/80 rounded" title="配置解除">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
                         ` : `
-                            <span class="text-[11px] text-slate-400 w-full text-center">ドロップして配置</span>
+                            <span class="text-slate-400 text-xs border border-dashed border-slate-300 rounded-lg px-3 py-2 w-full">ドロップして配置</span>
                         `}
                     </div>
                 `;
                 container.appendChild(card);
             });
-        }
+        };
 
-        function renderMonitorView() {
+        window.renderMonitorView = function() {
             const rawDate = document.getElementById('board-date').value;
             const dateObj = new Date(rawDate);
             const formattedDate = !isNaN(dateObj) ? `${dateObj.getFullYear()}年<br>${dateObj.getMonth() + 1}月${dateObj.getDate()}日` : rawDate;
@@ -1047,96 +859,219 @@
             document.getElementById('monitor-date-display').innerHTML = formattedDate;
             document.getElementById('monitor-total-count').textContent = staffPool.length;
 
-            const monitorTbody = document.getElementById('monitor-board-rows');
-            monitorTbody.innerHTML = '';
+            const container = document.getElementById('monitor-rows-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Calculate exact height string for CSS flex/height
+            const rowCount = boardRows.length || 1;
+            const rowHeightPercent = (100 / rowCount).toFixed(4) + '%';
 
             boardRows.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = "grid grid-cols-12 w-full hover:bg-slate-50 transition items-stretch min-h-0";
+                rowDiv.style.height = rowHeightPercent;
+
                 let html = `
-                    <tr class="hover:bg-slate-100/60 transition h-full">
-                        <td class="p-2 font-bold text-slate-800 text-xs bg-slate-200/70 border-r border-slate-200 w-[140px] text-center">
-                            <div class="flex items-center justify-center space-x-1 truncate">
-                                <i class="fa-solid fa-gears text-blue-600 mr-1"></i>
-                                <span class="truncate text-xs font-bold">${row.machine}</span>
-                            </div>
-                        </td>
+                    <div class="col-span-2 bg-slate-50 border-r border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center p-1 text-center truncate">
+                        <i class="fa-solid fa-gears text-blue-600 mr-1.5 shrink-0 text-xs"></i>
+                        <span class="truncate">${row.machine}</span>
+                    </div>
+                    <div class="col-span-10 grid grid-cols-7 h-full w-full gap-1 p-1">
                 `;
 
                 ['morning1', 'morning2', 'night1', 'night2', 'inspection', 'ext1', 'ext2'].forEach(slotKey => {
                     const staffId = row.slots[slotKey];
                     const staff = staffPool.find(s => s.id === staffId);
-                    
-                    html += `
-                        <td class="p-1 border-r border-slate-200 text-center h-full">
-                            <div class="monitor-slot-box border border-slate-200 shadow-sm">
-                    `;
+
+                    html += `<div class="h-full w-full relative rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shadow-inner flex items-center justify-center">`;
 
                     if (staff) {
-                        let innerContent = staff.photo 
+                        let innerVisual = staff.photo 
                             ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
-                            : `<div class="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-extrabold text-2xl absolute inset-0">${staff.name.charAt(0)}</div>`;
+                            : `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-black text-lg md:text-xl absolute inset-0">${staff.name.charAt(0)}</div>`;
 
                         html += `
-                            ${innerContent}
-                            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] px-1 py-1 text-center">
-                                <span class="text-xs font-extrabold text-white truncate block tracking-wide">${staff.name}</span>
+                            ${innerVisual}
+                            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] py-0.5 px-1 text-center z-10 border-t border-slate-700/50">
+                                <span class="text-[11px] md:text-xs font-bold text-white truncate block tracking-tight">${staff.name}</span>
                             </div>
                         `;
                     } else {
-                        html += `
-                            <div class="flex items-center justify-center w-full h-full text-slate-400 text-xs font-bold">-</div>
-                        `;
+                        html += `<span class="text-slate-300 text-xs font-bold">-</span>`;
                     }
 
-                    html += `
-                            </div>
-                        </td>
-                    `;
+                    html += `</div>`;
                 });
 
-                html += `</tr>`;
-                monitorTbody.innerHTML += html;
+                html += `</div>`;
+                rowDiv.innerHTML = html;
+                container.appendChild(rowDiv);
             });
 
+            // Supervisor section rendering
             const supContainer = document.getElementById('monitor-supervisors-container');
+            if (!supContainer) return;
             supContainer.innerHTML = '';
+
+            const supCount = supervisorsData.length || 1;
+            const supHeightPercent = (100 / supCount).toFixed(4) + '%';
 
             supervisorsData.forEach((sup) => {
                 const staff = staffPool.find(s => s.id === sup.staffId);
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-1.5 flex flex-col justify-between items-stretch shadow-sm min-h-0";
+                card.style.height = supHeightPercent;
 
                 let innerContent = '';
                 if (staff) {
                     innerContent = staff.photo 
                         ? `<img src="${staff.photo}" class="w-full h-full object-cover absolute inset-0">`
-                        : `<div class="w-full h-full bg-gradient-to-br from-indigo-600 to-purple-700 text-white flex items-center justify-center font-extrabold text-2xl absolute inset-0">${staff.name.charAt(0)}</div>`;
+                        : `<div class="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-xl absolute inset-0">${staff.name.charAt(0)}</div>`;
                 }
 
-                supContainer.innerHTML += `
-                    <div class="bg-slate-100 border border-slate-200 rounded-xl p-2 flex flex-col items-stretch justify-between shadow-sm text-center flex-1">
-                        <span class="text-[11px] font-extrabold text-indigo-700 mb-1.5 flex items-center justify-center truncate shrink-0">
-                            <i class="fa-solid fa-shield-halved mr-1 text-indigo-600"></i>${sup.title}
-                        </span>
-                        <div class="monitor-sup-slot-box border border-slate-200 shadow-sm flex flex-col justify-between items-center w-full h-full">
-                            ${staff ? `
-                                ${innerContent}
-                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] px-1 py-1 text-center">
-                                    <span class="text-xs font-extrabold text-white truncate block tracking-wide">${staff.name}</span>
-                                </div>
-                            ` : `
-                                <div class="flex items-center justify-center w-full h-full text-slate-400 text-xs font-bold">-</div>
-                            `}
-                        </div>
+                card.innerHTML = `
+                    <span class="text-[10px] md:text-[11px] font-extrabold text-indigo-700 flex items-center justify-center shrink-0 mb-1 truncate">
+                        <i class="fa-solid fa-shield-halved mr-1 text-indigo-600 shrink-0"></i>${sup.title}
+                    </span>
+                    <div class="flex-1 w-full min-h-0 relative rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+                        ${staff ? `
+                            ${innerContent}
+                            <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 backdrop-blur-[2px] py-0.5 px-1 text-center z-10 border-t border-slate-700/50">
+                                <span class="text-[11px] md:text-xs font-bold text-white truncate block tracking-tight">${staff.name}</span>
+                            </div>
+                        ` : `
+                            <span class="text-slate-300 text-xs font-bold">-</span>
+                        `}
                     </div>
                 `;
+                supContainer.appendChild(card);
             });
-        }
+        };
 
-        function renderStaffManagementTable() {
+        // Drag and Drop Logic
+        window.allowDrop = function(ev) {
+            ev.preventDefault();
+        };
+
+        window.dragStart = function(ev, staffId) {
+            ev.dataTransfer.setData("text/plain", staffId);
+        };
+
+        window.clearStaffAssignment = function(staffId) {
+            boardRows.forEach(r => {
+                Object.keys(r.slots).forEach(k => {
+                    if (r.slots[k] === staffId) r.slots[k] = '';
+                });
+            });
+            supervisorsData.forEach(sup => {
+                if (sup.staffId === staffId) sup.staffId = '';
+            });
+        };
+
+        window.dropToSlot = function(ev, rowId, slotKey) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData("text/plain");
+            if (!staffId) return;
+
+            window.clearStaffAssignment(staffId);
+
+            const targetRow = boardRows.find(r => r.id === rowId);
+            if (targetRow) {
+                targetRow.slots[slotKey] = staffId;
+                window.renderStaffPool();
+                window.renderBoardRows();
+                window.renderSupervisors();
+                window.autoSync();
+            }
+        };
+
+        window.dropToSupervisor = function(ev, supId) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData("text/plain");
+            if (!staffId) return;
+
+            window.clearStaffAssignment(staffId);
+
+            const targetSup = supervisorsData.find(s => s.id === supId);
+            if (targetSup) {
+                targetSup.staffId = staffId;
+                window.renderStaffPool();
+                window.renderBoardRows();
+                window.renderSupervisors();
+                window.autoSync();
+            }
+        };
+
+        window.dropToPool = function(ev) {
+            ev.preventDefault();
+            const staffId = ev.dataTransfer.getData("text/plain");
+            if (!staffId) return;
+
+            window.clearStaffAssignment(staffId);
+            window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
+            window.autoSync();
+        };
+
+        window.clearSlot = function(rowId, slotKey) {
+            const targetRow = boardRows.find(r => r.id === rowId);
+            if (targetRow) {
+                targetRow.slots[slotKey] = '';
+                window.renderStaffPool();
+                window.renderBoardRows();
+                window.autoSync();
+            }
+        };
+
+        window.clearSupervisor = function(supId) {
+            const targetSup = supervisorsData.find(s => s.id === supId);
+            if (targetSup) {
+                targetSup.staffId = '';
+                window.renderStaffPool();
+                window.renderSupervisors();
+                window.autoSync();
+            }
+        };
+
+        window.filterStaffPool = function() {
+            window.renderStaffPool();
+        };
+
+        window.autoSync = function() {
+            if (typeof window.saveDataToFirestore === 'function') {
+                window.saveDataToFirestore();
+            }
+        };
+
+        window.saveData = function() {
+            window.autoSync();
+        };
+
+        window.showNotification = function(msg) {
+            const toast = document.getElementById('toast-notification');
+            const toastMsg = document.getElementById('toast-message');
+            if (toast && toastMsg) {
+                toastMsg.textContent = msg;
+                toast.classList.remove('translate-y-[-100px]', 'opacity-0');
+                toast.classList.add('translate-y-0', 'opacity-100');
+                setTimeout(() => {
+                    toast.classList.remove('translate-y-0', 'opacity-100');
+                    toast.classList.add('translate-y-[-100px]', 'opacity-0');
+                }, 2500);
+            }
+        };
+
+        // Staff Management
+        window.renderStaffManagementTable = function() {
             const tbody = document.getElementById('staff-management-tbody');
             if (!tbody) return;
             tbody.innerHTML = '';
 
-            const query = document.getElementById('sheet-staff-search') ? document.getElementById('sheet-staff-search').value : '';
-            const filtered = staffPool.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+            const query = document.getElementById('sheet-staff-search') ? document.getElementById('sheet-staff-search').value.toLowerCase() : '';
+            const filtered = staffPool.filter(s => s.name.toLowerCase().includes(query));
 
             document.getElementById('sheet-total-count').textContent = staffPool.length;
 
@@ -1146,7 +1081,7 @@
             }
 
             filtered.forEach(staff => {
-                const assignedIds = getAssignedIds();
+                const assignedIds = window.getAssignedIds();
                 const isAssigned = assignedIds.has(staff.id);
                 let assignedLocation = '-';
                 if (isAssigned) {
@@ -1171,10 +1106,10 @@
                     <td class="p-3.5 text-center font-mono text-slate-500 text-xs">${staff.id}</td>
                     <td class="p-3.5 text-center">${avatarHtml}</td>
                     <td class="p-3.5 font-bold text-slate-800 text-xs">
-                        <input type="text" value="${staff.name}" onchange="updateStaffName('${staff.id}', this.value)" class="bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 text-xs w-full focus:outline-none">
+                        <input type="text" value="${staff.name}" onchange="window.updateStaffName('${staff.id}', this.value)" class="bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 text-xs w-full focus:outline-none">
                     </td>
                     <td class="p-3.5">
-                        <select onchange="updateStaffRole('${staff.id}', this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <select onchange="window.updateStaffRole('${staff.id}', this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="作業者" ${staff.role==='作業者'?'selected':''}>作業者</option>
                             <option value="リーダー" ${staff.role==='リーダー'?'selected':''}>リーダー</option>
                             <option value="監督者" ${staff.role==='監督者'?'selected':''}>監督者</option>
@@ -1187,39 +1122,39 @@
                         </span>
                     </td>
                     <td class="p-3.5 text-center">
-                        <input type="file" accept="image/*" onchange="updateStaffPhoto(event, '${staff.id}')" class="hidden" id="photo-file-${staff.id}">
+                        <input type="file" accept="image/*" onchange="window.updateStaffPhoto(event, '${staff.id}')" class="hidden" id="photo-file-${staff.id}">
                         <label for="photo-file-${staff.id}" class="bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold px-3 py-1 rounded-lg text-[11px] cursor-pointer inline-flex items-center space-x-1 transition shadow-sm">
                             <i class="fa-solid fa-camera"></i><span>変更</span>
                         </label>
                     </td>
                     <td class="p-3.5 text-center">
-                        <button onclick="promptDeleteStaff('${staff.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1 rounded-lg text-[11px] transition inline-flex items-center space-x-1 cursor-pointer">
+                        <button onclick="window.promptDeleteStaff('${staff.id}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-3 py-1 rounded-lg text-[11px] transition inline-flex items-center space-x-1 cursor-pointer">
                             <i class="fa-solid fa-trash-can"></i><span>削除</span>
                         </button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
-        }
+        };
 
-        function updateStaffName(id, newName) {
+        window.updateStaffName = function(id, newName) {
             const s = staffPool.find(x => x.id === id);
             if (s) {
                 s.name = newName.trim();
-                renderStaffPool();
-                autoSync();
+                window.renderStaffPool();
+                window.autoSync();
             }
-        }
+        };
 
-        function updateStaffRole(id, newRole) {
+        window.updateStaffRole = function(id, newRole) {
             const s = staffPool.find(x => x.id === id);
             if (s) {
                 s.role = newRole;
-                autoSync();
+                window.autoSync();
             }
-        }
+        };
 
-        function updateStaffPhoto(event, id) {
+        window.updateStaffPhoto = function(event, id) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -1227,31 +1162,32 @@
                 const s = staffPool.find(x => x.id === id);
                 if (s) {
                     s.photo = e.target.result;
-                    renderStaffPool();
-                    renderStaffManagementTable();
-                    autoSync();
+                    window.renderStaffPool();
+                    window.renderStaffManagementTable();
+                    window.autoSync();
                 }
             };
             reader.readAsDataURL(file);
-        }
+        };
 
-        function promptDeleteStaff(id) {
+        window.promptDeleteStaff = function(id) {
             staffToDeleteId = id;
             const staff = staffPool.find(s => s.id === id);
             document.getElementById('delete-modal-text').textContent = `スタッフ「${staff ? staff.name : ''}」を削除してもよろしいですか？`;
             document.getElementById('delete-modal').classList.remove('hidden');
             document.getElementById('confirm-delete-btn').onclick = function() {
-                executeDeleteStaff(staffToDeleteId);
+                window.executeDeleteStaff(staffToDeleteId);
             };
-        }
+        };
 
-        function closeDeleteModal() {
+        window.closeDeleteModal = function() {
             document.getElementById('delete-modal').classList.add('hidden');
             staffToDeleteId = null;
-        }
+        };
 
-        function executeDeleteStaff(id) {
+        window.executeDeleteStaff = function(id) {
             staffPool = staffPool.filter(s => s.id !== id);
+            window.staffPool = staffPool;
             boardRows.forEach(r => {
                 Object.keys(r.slots).forEach(k => {
                     if (r.slots[k] === id) r.slots[k] = '';
@@ -1260,32 +1196,32 @@
             supervisorsData.forEach(sup => {
                 if (sup.staffId === id) sup.staffId = '';
             });
-            closeDeleteModal();
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            renderStaffManagementTable();
-            autoSync();
-            showNotification('スタッフを削除しました。');
-        }
+            window.closeDeleteModal();
+            window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
+            window.renderStaffManagementTable();
+            window.autoSync();
+            window.showNotification('スタッフを削除しました。');
+        };
 
-        function openAddStaffModal() {
+        window.openAddStaffModal = function() {
             document.getElementById('new-staff-names').value = '';
             document.getElementById('new-staff-photo').value = '';
             document.getElementById('add-staff-modal').classList.remove('hidden');
-        }
+        };
 
-        function closeAddStaffModal() {
+        window.closeAddStaffModal = function() {
             document.getElementById('add-staff-modal').classList.add('hidden');
-        }
+        };
 
-        function confirmAddStaff() {
+        window.confirmAddStaff = function() {
             const namesRaw = document.getElementById('new-staff-names').value.trim();
             const role = document.getElementById('new-staff-role').value;
             const photoInput = document.getElementById('new-staff-photo');
 
             if (!namesRaw) {
-                showNotification('スタッフ名を入力してください。');
+                window.showNotification('スタッフ名を入力してください。');
                 return;
             }
 
@@ -1296,11 +1232,11 @@
                     const newId = 's_' + Date.now() + '_' + Math.floor(Math.random() * 1000) + idx;
                     staffPool.push({ id: newId, name: name, role: role, photo: photoData });
                 });
-                closeAddStaffModal();
-                renderStaffPool();
-                renderStaffManagementTable();
-                autoSync();
-                showNotification(`${names.length}名のスタッフを追加しました！`);
+                window.closeAddStaffModal();
+                window.renderStaffPool();
+                window.renderStaffManagementTable();
+                window.autoSync();
+                window.showNotification(`${names.length}名のスタッフを追加しました！`);
             };
 
             if (photoInput.files && photoInput.files[0]) {
@@ -1312,11 +1248,12 @@
             } else {
                 processAdd('');
             }
-        }
+        };
 
+        // AI Modal logic
         let uploadedAiImage = null;
 
-        function openAiModal() {
+        window.openAiModal = function() {
             document.getElementById('ai-file-input').value = '';
             document.getElementById('ai-loading').classList.add('hidden');
             document.getElementById('ai-result-box').classList.add('hidden');
@@ -1327,13 +1264,13 @@
                 <p class="text-[10px] text-slate-400 mt-1">PNG, JPG (最大 10MB)</p>
             `;
             document.getElementById('ai-modal').classList.remove('hidden');
-        }
+        };
 
-        function closeAiModal() {
+        window.closeAiModal = function() {
             document.getElementById('ai-modal').classList.add('hidden');
-        }
+        };
 
-        function handleImageUpload(event) {
+        window.handleImageUpload = function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -1344,28 +1281,35 @@
                     <img src="${uploadedAiImage}" class="h-28 mx-auto rounded-lg object-contain mb-2 border border-slate-200">
                     <p class="text-xs font-semibold text-indigo-600">画像が選択されました。解析を開始します...</p>
                 `;
-                simulateAiAnalysis();
+                window.simulateAiAnalysis();
             };
             reader.readAsDataURL(file);
-        }
+        };
 
-        function simulateAiAnalysis() {
+        window.simulateAiAnalysis = function() {
             document.getElementById('ai-loading').classList.remove('hidden');
             setTimeout(() => {
                 document.getElementById('ai-loading').classList.add('hidden');
                 document.getElementById('ai-result-box').classList.remove('hidden');
                 document.getElementById('apply-ai-btn').disabled = false;
             }, 1800);
-        }
+        };
 
-        function applyAiResults() {
-            closeAiModal();
-            showNotification('AI解析によりボードの配置が正常に更新されました！');
-            renderStaffPool();
-            renderBoardRows();
-            renderSupervisors();
-            autoSync();
-        }
+        window.applyAiResults = function() {
+            window.closeAiModal();
+            window.showNotification('AI解析によりボードの配置が正常に更新されました！');
+            window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
+            window.autoSync();
+        };
+
+        // Initialize UI after load
+        window.onload = function() {
+            window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
+        };
     </script>
 </body>
 </html>

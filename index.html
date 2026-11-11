@@ -31,6 +31,22 @@
             background-color: #eff6ff;
         }
 
+        /* 編集モード時のスタイル */
+        .edit-mode-active .board-slot-box {
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+        }
+        .edit-mode-active .board-slot-box:hover {
+            border-color: #2563eb !important;
+            transform: scale(1.02);
+            z-index: 10;
+        }
+        .staff-chip-selected {
+            border-color: #2563eb !important;
+            background-color: #dbeafe !important;
+            box-shadow: 0 0 0 2px #3b82f6 !important;
+        }
+
         /* モニタースロットボックス */
         .monitor-slot-box {
             height: 100%;
@@ -155,6 +171,12 @@
                     </span>
                 </div>
 
+                <!-- Edit Mode Toggle Button -->
+                <button onclick="window.toggleEditMode()" id="edit-mode-toggle-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+                    <span id="edit-mode-btn-text">配置編集: OFF</span>
+                </button>
+
                 <!-- Action Buttons -->
                 <button onclick="window.promptResetAllAssignments()" class="bg-slate-800 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-500 text-rose-300 hover:text-rose-200 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-1.5 cursor-pointer" title="現在のボード配置をすべて未配置に戻します">
                     <i class="fa-solid fa-arrow-rotate-left"></i>
@@ -217,8 +239,15 @@
                         <div class="flex items-center space-x-2">
                             <i class="fa-solid fa-industry text-blue-400 text-sm"></i>
                             <span class="font-bold text-sm tracking-wide">101〜106号機 / みずすまし 配置ボード</span>
+                            <span id="edit-badge" class="hidden text-[10px] font-bold bg-amber-500 text-slate-900 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                <i class="fa-solid fa-pen text-[9px]"></i> 編集中
+                            </span>
                         </div>
                         <div class="flex items-center space-x-2">
+                            <button onclick="window.toggleEditMode()" id="board-quick-edit-btn" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-bold px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 shadow-sm">
+                                <i class="fa-solid fa-pen-to-square text-[11px]"></i>
+                                <span id="board-edit-btn-label">編集モード開始</span>
+                            </button>
                             <div class="flex items-center bg-slate-900/60 rounded-lg p-0.5 border border-slate-700">
                                 <span class="text-blue-300 text-[11px] px-2 py-0.5 font-semibold">朝勤</span>
                                 <button onclick="window.clearShiftAssignments('morning')" title="朝勤スロットのみクリア" class="text-[10px] text-slate-400 hover:text-rose-300 hover:bg-rose-900/30 px-1.5 py-0.5 rounded transition cursor-pointer">
@@ -235,6 +264,20 @@
                                 <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>全解除
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Selected Staff Banner in Edit Mode -->
+                    <div id="selection-banner" class="hidden bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs flex items-center justify-between transition-all">
+                        <div class="flex items-center space-x-2">
+                            <span class="inline-flex items-center justify-center bg-blue-600 text-white rounded-md w-5 h-5 text-[10px] font-bold">
+                                <i class="fa-solid fa-hand-pointer"></i>
+                            </span>
+                            <span class="text-slate-700 font-medium">配置待ち: <strong id="selected-staff-name" class="text-blue-700 font-black"></strong></span>
+                            <span class="text-[11px] text-slate-400">配置したい枠をタップしてください（交換も可能）</span>
+                        </div>
+                        <button onclick="window.cancelStaffSelection()" class="text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 rounded-lg cursor-pointer">
+                            選択解除
+                        </button>
                     </div>
 
                     <div class="overflow-x-auto flex-1 p-2">
@@ -792,12 +835,84 @@
         let staffToDeleteId = null;
         let selectedSlotTarget = null; // { type: 'row'|'sup', id: '', slotKey: '' }
         let aiParsedPayload = null;
+        let isEditMode = false;
+        let activeSelectedStaffId = null; // For tap-to-place in tablet
 
         // Sync with global window
         window.staffPool = staffPool;
         window.boardRows = boardRows;
         window.supervisorsData = supervisorsData;
         window.currentTab = currentTab;
+        window.isEditMode = isEditMode;
+
+        // Toggle Edit Mode
+        window.toggleEditMode = function() {
+            isEditMode = !isEditMode;
+            window.isEditMode = isEditMode;
+
+            const headerBtn = document.getElementById('edit-mode-toggle-btn');
+            const headerBtnText = document.getElementById('edit-mode-btn-text');
+            const boardBtnLabel = document.getElementById('board-edit-btn-label');
+            const editBadge = document.getElementById('edit-badge');
+            const viewBoard = document.getElementById('view-board');
+
+            if (isEditMode) {
+                if (headerBtn) {
+                    headerBtn.className = "bg-amber-500 hover:bg-amber-400 text-slate-900 border border-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md transition flex items-center space-x-1.5 cursor-pointer ring-2 ring-amber-300/50";
+                }
+                if (headerBtnText) headerBtnText.textContent = "配置編集: ON";
+                if (boardBtnLabel) boardBtnLabel.textContent = "編集中 (完了する)";
+                if (editBadge) editBadge.classList.remove('hidden');
+                if (viewBoard) viewBoard.classList.add('edit-mode-active');
+                window.showNotification('配置編集モードを開始しました。タップで簡単に配置・交換できます。');
+            } else {
+                window.cancelStaffSelection();
+                if (headerBtn) {
+                    headerBtn.className = "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-1.5 cursor-pointer";
+                }
+                if (headerBtnText) headerBtnText.textContent = "配置編集: OFF";
+                if (boardBtnLabel) boardBtnLabel.textContent = "編集モード開始";
+                if (editBadge) editBadge.classList.add('hidden');
+                if (viewBoard) viewBoard.classList.remove('edit-mode-active');
+                window.showNotification('配置編集モードを終了しました。');
+            }
+
+            window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
+        };
+
+        // Select staff by tapping (for tablet touch workflow)
+        window.selectStaffForPlacement = function(staffId) {
+            if (!isEditMode) {
+                window.showNotification('スタッフを配置するには上部の「編集モード」をONにしてください');
+                return;
+            }
+
+            if (activeSelectedStaffId === staffId) {
+                window.cancelStaffSelection();
+                return;
+            }
+
+            activeSelectedStaffId = staffId;
+            const staff = window.staffPool.find(s => s.id === staffId);
+            const banner = document.getElementById('selection-banner');
+            const nameEl = document.getElementById('selected-staff-name');
+
+            if (staff && banner && nameEl) {
+                nameEl.textContent = staff.name;
+                banner.classList.remove('hidden');
+            }
+
+            window.renderStaffPool();
+        };
+
+        window.cancelStaffSelection = function() {
+            activeSelectedStaffId = null;
+            const banner = document.getElementById('selection-banner');
+            if (banner) banner.classList.add('hidden');
+            window.renderStaffPool();
+        };
 
         // View Tabs
         window.switchTab = function(tabName) {
@@ -876,27 +991,82 @@
             unassignedStaff.forEach(staff => {
                 if (query && !staff.name.toLowerCase().includes(query)) return;
 
+                const isSelected = activeSelectedStaffId === staff.id;
                 const chip = document.createElement('div');
                 chip.draggable = true;
                 chip.ondragstart = (e) => window.dragStart(e, staff.id);
-                chip.className = "bg-white hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 rounded-xl p-2 flex items-center space-x-2.5 cursor-grab active:cursor-grabbing transition shadow-sm group";
+                chip.onclick = () => window.selectStaffForPlacement(staff.id);
+                chip.className = `bg-white hover:bg-blue-50/70 border ${isSelected ? 'staff-chip-selected' : 'border-slate-200 hover:border-blue-300'} rounded-xl p-2 flex items-center space-x-2.5 cursor-pointer transition shadow-sm group select-none`;
 
                 let avatar = staff.photo
                     ? `<img src="${staff.photo}" class="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0">`
-                    : `<div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs border border-blue-200 shrink-0">${staff.name.charAt(0)}</div>`;
+                    : `<div class="w-8 h-8 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'} flex items-center justify-center font-bold text-xs border border-blue-200 shrink-0">${staff.name.charAt(0)}</div>`;
 
                 chip.innerHTML = `
                     ${avatar}
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-slate-700 truncate group-hover:text-blue-600">${staff.name}</p>
+                        <p class="text-xs font-bold ${isSelected ? 'text-blue-700 font-black' : 'text-slate-700'} truncate group-hover:text-blue-600">${staff.name}</p>
                         <p class="text-[10px] text-slate-400">${staff.role}</p>
                     </div>
-                    <i class="fa-solid fa-grip-vertical text-slate-300 group-hover:text-blue-400 text-xs"></i>
+                    ${isSelected ? '<span class="text-[10px] font-black text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">選択中</span>' : '<i class="fa-solid fa-hand-pointer text-slate-300 group-hover:text-blue-400 text-xs"></i>'}
                 `;
                 poolEl.appendChild(chip);
             });
 
             window.updateTotalCount();
+        };
+
+        // Handle Slot Touch or Click in Board
+        window.handleSlotInteraction = function(rowId, slotKey, label) {
+            if (!isEditMode) {
+                // If not in edit mode, prompt or open modal
+                window.openSlotSelect('row', rowId, slotKey, label);
+                return;
+            }
+
+            // In Edit Mode:
+            // 1. If a staff is already tapped and selected, place them immediately
+            if (activeSelectedStaffId) {
+                const targetRow = window.boardRows.find(r => r.id === rowId);
+                if (targetRow) {
+                    const existingStaffInSlot = targetRow.slots[slotKey];
+                    window.clearStaffAssignment(activeSelectedStaffId);
+                    targetRow.slots[slotKey] = activeSelectedStaffId;
+
+                    // If target slot already had someone, they automatically return to pool or swap
+                    window.cancelStaffSelection();
+                    window.refreshAllViews();
+                    window.autoSync();
+                    window.showNotification('配置を更新しました。');
+                    return;
+                }
+            }
+
+            // 2. If no staff was pre-selected, open modal to choose staff or clear
+            window.openSlotSelect('row', rowId, slotKey, label);
+        };
+
+        // Handle Supervisor Slot Interaction
+        window.handleSupervisorInteraction = function(supId, label) {
+            if (!isEditMode) {
+                window.openSlotSelect('sup', supId, '', label);
+                return;
+            }
+
+            if (activeSelectedStaffId) {
+                const targetSup = window.supervisorsData.find(s => s.id === supId);
+                if (targetSup) {
+                    window.clearStaffAssignment(activeSelectedStaffId);
+                    targetSup.staffId = activeSelectedStaffId;
+                    window.cancelStaffSelection();
+                    window.refreshAllViews();
+                    window.autoSync();
+                    window.showNotification(`${label} を配置しました。`);
+                    return;
+                }
+            }
+
+            window.openSlotSelect('sup', supId, '', label);
         };
 
         // Render: Assignment Board Rows
@@ -923,10 +1093,11 @@
                 slotKeys.forEach(slotKey => {
                     const staffId = row.slots[slotKey];
                     const staff = window.staffPool.find(s => s.id === staffId);
+                    const isHighlightedSlot = isEditMode && activeSelectedStaffId;
 
                     html += `
                         <td class="p-1 border-r border-slate-200 text-center align-middle" ondragover="window.allowDrop(event)" ondrop="window.dropToSlot(event, '${row.id}', '${slotKey}')">
-                            <div class="board-slot-box rounded-xl border ${staff ? 'border-slate-300 bg-white shadow-sm' : 'border-dashed border-slate-300 bg-slate-50/70 hover:bg-blue-50/50'} cursor-pointer" onclick="window.openSlotSelect('row', '${row.id}', '${slotKey}', '${row.machine}')">
+                            <div class="board-slot-box rounded-xl border ${staff ? 'border-slate-300 bg-white shadow-sm' : 'border-dashed border-slate-300 bg-slate-50/70 hover:bg-blue-50/50'} ${isHighlightedSlot ? 'hover:bg-amber-50 hover:border-amber-400' : ''} cursor-pointer" onclick="window.handleSlotInteraction('${row.id}', '${slotKey}', '${row.machine}')">
                     `;
 
                     if (staff) {
@@ -940,7 +1111,7 @@
                                 <div class="absolute bottom-0 inset-x-0 bg-slate-900/85 backdrop-blur-[2px] py-0.5 px-0.5 text-center z-10 border-t border-slate-700/40">
                                     <span class="text-[10px] font-bold text-white truncate block tracking-tight leading-tight">${staff.name}</span>
                                 </div>
-                                <button type="button" onclick="event.stopPropagation(); window.clearSlot('${row.id}', '${slotKey}')" title="枠から外す" class="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[9px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow z-20">
+                                <button type="button" onclick="event.stopPropagation(); window.clearSlot('${row.id}', '${slotKey}')" title="枠から外す" class="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[9px] ${isEditMode ? 'opacity-90' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
@@ -948,7 +1119,7 @@
                     } else {
                         html += `
                             <span class="text-slate-300 group-hover:text-blue-500 text-[10px] font-bold flex flex-col items-center gap-0.5">
-                                <i class="fa-solid fa-plus text-[9px]"></i>配置
+                                <i class="fa-solid fa-plus text-[9px]"></i>${isEditMode && activeSelectedStaffId ? 'ここへ配置' : '配置'}
                             </span>
                         `;
                     }
@@ -989,21 +1160,21 @@
                     <span class="text-[11px] font-bold text-indigo-800 mb-1.5 flex items-center justify-center">
                         <i class="fa-solid fa-shield-halved mr-1 text-indigo-600"></i>${sup.title}
                     </span>
-                    <div class="w-full h-24 relative rounded-xl overflow-hidden bg-white border ${staff ? 'border-indigo-200 shadow-sm' : 'border-dashed border-slate-300 hover:border-indigo-400 cursor-pointer'} flex items-center justify-center" onclick="window.openSlotSelect('sup', '${sup.id}', '', '${sup.title}')">
+                    <div class="w-full h-24 relative rounded-xl overflow-hidden bg-white border ${staff ? 'border-indigo-200 shadow-sm' : 'border-dashed border-slate-300 hover:border-indigo-400 cursor-pointer'} flex items-center justify-center" onclick="window.handleSupervisorInteraction('${sup.id}', '${sup.title}')">
                         ${staff ? `
                             <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full relative group cursor-grab">
                                 ${avatarHtml}
                                 <div class="absolute bottom-0 inset-x-0 bg-slate-900/85 backdrop-blur-[2px] py-1 px-1 text-center z-10 border-t border-slate-700/50">
                                     <span class="text-xs font-bold text-white truncate block tracking-tight">${staff.name}</span>
                                 </div>
-                                <button type="button" onclick="event.stopPropagation(); window.clearSupervisor('${sup.id}')" class="absolute top-1.5 right-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow z-20">
+                                <button type="button" onclick="event.stopPropagation(); window.clearSupervisor('${sup.id}')" class="absolute top-1.5 right-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] ${isEditMode ? 'opacity-90' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
                         ` : `
                             <span class="text-slate-400 text-xs font-medium flex flex-col items-center gap-1">
                                 <i class="fa-solid fa-user-plus text-slate-300"></i>
-                                <span>クリック・ドロップで配置</span>
+                                <span>${isEditMode && activeSelectedStaffId ? 'ここへ配置' : 'タップで配置'}</span>
                             </span>
                         `}
                     </div>

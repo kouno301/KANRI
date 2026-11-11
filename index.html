@@ -35,6 +35,7 @@
         .edit-mode-active .board-slot-box {
             border-color: #60a5fa !important;
             box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+            cursor: pointer;
         }
         .edit-mode-active .board-slot-box:hover {
             border-color: #2563eb !important;
@@ -45,6 +46,16 @@
             border-color: #2563eb !important;
             background-color: #dbeafe !important;
             box-shadow: 0 0 0 2px #3b82f6 !important;
+        }
+        .slot-selected {
+            border-color: #f59e0b !important;
+            background-color: #fef3c7 !important;
+            box-shadow: 0 0 0 3px #f59e0b !important;
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.75; }
         }
 
         /* モニタースロットボックス */
@@ -267,17 +278,24 @@
                     </div>
 
                     <!-- Selected Staff Banner in Edit Mode -->
-                    <div id="selection-banner" class="hidden bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs flex items-center justify-between transition-all">
+                    <div id="selection-banner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-xs flex items-center justify-between transition-all shrink-0">
                         <div class="flex items-center space-x-2">
-                            <span class="inline-flex items-center justify-center bg-blue-600 text-white rounded-md w-5 h-5 text-[10px] font-bold">
-                                <i class="fa-solid fa-hand-pointer"></i>
+                            <span class="inline-flex items-center justify-center bg-amber-500 text-white rounded-lg w-6 h-6 text-xs font-bold shadow-sm">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
                             </span>
-                            <span class="text-slate-700 font-medium">配置待ち: <strong id="selected-staff-name" class="text-blue-700 font-black"></strong></span>
-                            <span class="text-[11px] text-slate-400">配置したい枠をタップしてください（交換も可能）</span>
+                            <span class="text-slate-800 font-medium">
+                                選択中: <strong id="selected-staff-name" class="text-amber-700 font-black text-sm"></strong>
+                            </span>
+                            <span class="text-[11px] text-amber-700/80 bg-amber-100/70 px-2 py-0.5 rounded-full font-medium">配置先または交換相手の枠をタップ</span>
                         </div>
-                        <button onclick="window.cancelStaffSelection()" class="text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 rounded-lg cursor-pointer">
-                            選択解除
-                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="window.clearSelectedStaffDirectly()" class="text-[11px] bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2.5 py-1 rounded-lg cursor-pointer transition">
+                                <i class="fa-solid fa-trash-can mr-1"></i>配置解除
+                            </button>
+                            <button onclick="window.cancelStaffSelection()" class="text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2.5 py-1 rounded-lg cursor-pointer transition">
+                                選択解除
+                            </button>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto flex-1 p-2">
@@ -836,7 +854,7 @@
         let selectedSlotTarget = null; // { type: 'row'|'sup', id: '', slotKey: '' }
         let aiParsedPayload = null;
         let isEditMode = false;
-        let activeSelectedStaffId = null; // For tap-to-place in tablet
+        let activeSelectedSource = null; // { type: 'pool'|'row'|'sup', staffId: '', rowId: '', slotKey: '', supId: '' }
 
         // Sync with global window
         window.staffPool = staffPool;
@@ -844,6 +862,70 @@
         window.supervisorsData = supervisorsData;
         window.currentTab = currentTab;
         window.isEditMode = isEditMode;
+
+        // View Management & Refresh Helpers
+        window.getAssignedIds = function() {
+            const assigned = new Set();
+            (window.boardRows || []).forEach(r => {
+                Object.values(r.slots || {}).forEach(id => { if (id) assigned.add(id); });
+            });
+            (window.supervisorsData || []).forEach(s => { if (s.staffId) assigned.add(s.staffId); });
+            return assigned;
+        };
+
+        window.updateTotalCount = function() {
+            const total = (window.staffPool || []).length;
+            const assignedIds = window.getAssignedIds();
+            const unassignedCount = (window.staffPool || []).filter(s => !assignedIds.has(s.id)).length;
+
+            const totalEl = document.getElementById('total-staff-count');
+            if (totalEl) totalEl.textContent = total;
+
+            const poolEl = document.getElementById('pool-count');
+            if (poolEl) poolEl.textContent = unassignedCount;
+
+            const monitorTotalEl = document.getElementById('monitor-total-count');
+            if (monitorTotalEl) monitorTotalEl.textContent = total;
+
+            const sheetTotalEl = document.getElementById('sheet-total-count');
+            if (sheetTotalEl) sheetTotalEl.textContent = total;
+        };
+
+        window.refreshAllViews = function() {
+            window.updateTotalCount();
+            if (window.currentTab === 'board') {
+                window.renderStaffPool();
+                window.renderBoardRows();
+                window.renderSupervisors();
+            } else if (window.currentTab === 'staff') {
+                window.renderStaffManagementTable();
+            } else if (window.currentTab === 'monitor') {
+                window.renderMonitorView();
+            }
+        };
+
+        window.switchTab = function(tabName) {
+            window.currentTab = tabName;
+            ['board', 'staff', 'monitor'].forEach(t => {
+                const view = document.getElementById(`view-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (t === tabName) {
+                    if (view) view.classList.remove('hidden');
+                    if (btn) btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white transition cursor-pointer shadow-sm";
+                } else {
+                    if (view) view.classList.add('hidden');
+                    if (btn) btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer";
+                }
+            });
+            window.refreshAllViews();
+        };
+
+        window.onDateChange = function() {
+            if (typeof window.setupRealtimeSync === 'function') {
+                window.setupRealtimeSync();
+            }
+            window.refreshAllViews();
+        };
 
         // Toggle Edit Mode
         window.toggleEditMode = function() {
@@ -864,7 +946,7 @@
                 if (boardBtnLabel) boardBtnLabel.textContent = "編集中 (完了する)";
                 if (editBadge) editBadge.classList.remove('hidden');
                 if (viewBoard) viewBoard.classList.add('edit-mode-active');
-                window.showNotification('配置編集モードを開始しました。タップで簡単に配置・交換できます。');
+                window.showNotification('配置編集モード ON: タップで選択し、目的の枠をタップして配置・入れ替えできます。');
             } else {
                 window.cancelStaffSelection();
                 if (headerBtn) {
@@ -882,92 +964,182 @@
             window.renderSupervisors();
         };
 
-        // Select staff by tapping (for tablet touch workflow)
+        // Select staff from pool (tap)
         window.selectStaffForPlacement = function(staffId) {
             if (!isEditMode) {
-                window.showNotification('スタッフを配置するには上部の「編集モード」をONにしてください');
-                return;
+                window.toggleEditMode();
             }
 
-            if (activeSelectedStaffId === staffId) {
+            if (activeSelectedSource && activeSelectedSource.type === 'pool' && activeSelectedSource.staffId === staffId) {
                 window.cancelStaffSelection();
                 return;
             }
 
-            activeSelectedStaffId = staffId;
+            activeSelectedSource = { type: 'pool', staffId: staffId };
             const staff = window.staffPool.find(s => s.id === staffId);
             const banner = document.getElementById('selection-banner');
             const nameEl = document.getElementById('selected-staff-name');
 
             if (staff && banner && nameEl) {
-                nameEl.textContent = staff.name;
+                nameEl.textContent = `${staff.name} (未配置)`;
                 banner.classList.remove('hidden');
             }
 
             window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
         };
 
         window.cancelStaffSelection = function() {
-            activeSelectedStaffId = null;
+            activeSelectedSource = null;
             const banner = document.getElementById('selection-banner');
             if (banner) banner.classList.add('hidden');
             window.renderStaffPool();
+            window.renderBoardRows();
+            window.renderSupervisors();
         };
 
-        // View Tabs
-        window.switchTab = function(tabName) {
-            currentTab = tabName;
-            window.currentTab = tabName;
+        window.clearSelectedStaffDirectly = function() {
+            if (!activeSelectedSource) return;
+            if (activeSelectedSource.type === 'row') {
+                window.clearSlot(activeSelectedSource.rowId, activeSelectedSource.slotKey);
+            } else if (activeSelectedSource.type === 'sup') {
+                window.clearSupervisor(activeSelectedSource.supId);
+            }
+            window.cancelStaffSelection();
+            window.showNotification('配置を解除しました。');
+        };
 
-            ['board', 'staff', 'monitor'].forEach(t => {
-                const view = document.getElementById(`view-${t}`);
-                const btn = document.getElementById(`tab-btn-${t}`);
-                if (t === tabName) {
-                    view.classList.remove('hidden');
-                    btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600 text-white transition cursor-pointer shadow-sm";
+        // Handle Slot Touch or Click in Board (Supports Tap-to-Place and Tap-to-Swap)
+        window.handleSlotInteraction = function(rowId, slotKey, label) {
+            if (!isEditMode) {
+                // If edit mode is OFF, open modal directly for quick assignment
+                window.openSlotSelect('row', rowId, slotKey, label);
+                return;
+            }
+
+            const targetRow = window.boardRows.find(r => r.id === rowId);
+            if (!targetRow) return;
+            const targetCurrentStaffId = targetRow.slots[slotKey];
+
+            // 1. If nothing is selected yet:
+            if (!activeSelectedSource) {
+                if (targetCurrentStaffId) {
+                    // Select this slot for swapping/moving
+                    activeSelectedSource = { type: 'row', staffId: targetCurrentStaffId, rowId: rowId, slotKey: slotKey };
+                    const staff = window.staffPool.find(s => s.id === targetCurrentStaffId);
+                    const banner = document.getElementById('selection-banner');
+                    const nameEl = document.getElementById('selected-staff-name');
+                    if (banner && nameEl) {
+                        nameEl.textContent = `${staff ? staff.name : '担当者'} (${label})`;
+                        banner.classList.remove('hidden');
+                    }
+                    window.renderStaffPool();
+                    window.renderBoardRows();
+                    window.renderSupervisors();
                 } else {
-                    view.classList.add('hidden');
-                    btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition cursor-pointer";
+                    // Empty slot clicked with nothing selected: open quick staff picker modal
+                    window.openSlotSelect('row', rowId, slotKey, label);
                 }
-            });
+                return;
+            }
 
+            // 2. If clicking on the exact same slot that is currently selected -> Cancel
+            if (activeSelectedSource.type === 'row' && activeSelectedSource.rowId === rowId && activeSelectedSource.slotKey === slotKey) {
+                window.cancelStaffSelection();
+                return;
+            }
+
+            // 3. Perform placement or SWAP
+            const sourceStaffId = activeSelectedSource.staffId;
+
+            if (activeSelectedSource.type === 'pool') {
+                // Coming from pool
+                window.clearStaffAssignment(sourceStaffId);
+                targetRow.slots[slotKey] = sourceStaffId;
+            } else if (activeSelectedSource.type === 'row') {
+                // Swapping between two machine slots
+                const sourceRow = window.boardRows.find(r => r.id === activeSelectedSource.rowId);
+                if (sourceRow) {
+                    sourceRow.slots[activeSelectedSource.slotKey] = targetCurrentStaffId; // may be '' or another staff
+                    targetRow.slots[slotKey] = sourceStaffId;
+                }
+            } else if (activeSelectedSource.type === 'sup') {
+                // Swapping between supervisor slot and machine slot
+                const sourceSup = window.supervisorsData.find(s => s.id === activeSelectedSource.supId);
+                if (sourceSup) {
+                    sourceSup.staffId = targetCurrentStaffId;
+                    targetRow.slots[slotKey] = sourceStaffId;
+                }
+            }
+
+            window.cancelStaffSelection();
             window.refreshAllViews();
+            window.autoSync();
+            window.showNotification('配置・入れ替えを完了しました。');
         };
 
-        window.refreshAllViews = function() {
-            window.updateTotalCount();
-            if (currentTab === 'board') {
-                window.renderStaffPool();
-                window.renderBoardRows();
-                window.renderSupervisors();
-            } else if (currentTab === 'staff') {
-                window.renderStaffManagementTable();
-            } else if (currentTab === 'monitor') {
-                window.renderMonitorView();
+        // Handle Supervisor Slot Interaction (Supports Tap-to-Place and Tap-to-Swap)
+        window.handleSupervisorInteraction = function(supId, label) {
+            if (!isEditMode) {
+                window.openSlotSelect('sup', supId, '', label);
+                return;
             }
-        };
 
-        window.onDateChange = function() {
-            if (typeof window.setupRealtimeSync === 'function') {
-                window.setupRealtimeSync();
+            const targetSup = window.supervisorsData.find(s => s.id === supId);
+            if (!targetSup) return;
+            const targetCurrentStaffId = targetSup.staffId;
+
+            // 1. If nothing is selected yet:
+            if (!activeSelectedSource) {
+                if (targetCurrentStaffId) {
+                    activeSelectedSource = { type: 'sup', staffId: targetCurrentStaffId, supId: supId };
+                    const staff = window.staffPool.find(s => s.id === targetCurrentStaffId);
+                    const banner = document.getElementById('selection-banner');
+                    const nameEl = document.getElementById('selected-staff-name');
+                    if (banner && nameEl) {
+                        nameEl.textContent = `${staff ? staff.name : '担当者'} (${label})`;
+                        banner.classList.remove('hidden');
+                    }
+                    window.renderStaffPool();
+                    window.renderBoardRows();
+                    window.renderSupervisors();
+                } else {
+                    window.openSlotSelect('sup', supId, '', label);
+                }
+                return;
             }
-        };
 
-        window.getAssignedIds = function() {
-            const assigned = new Set();
-            window.boardRows.forEach(r => {
-                Object.values(r.slots).forEach(id => { if (id) assigned.add(id); });
-            });
-            window.supervisorsData.forEach(s => { if (s.staffId) assigned.add(s.staffId); });
-            return assigned;
-        };
+            // 2. Clicked same slot
+            if (activeSelectedSource.type === 'sup' && activeSelectedSource.supId === supId) {
+                window.cancelStaffSelection();
+                return;
+            }
 
-        window.updateTotalCount = function() {
-            const count = window.staffPool.length;
-            const el = document.getElementById('total-staff-count');
-            if (el) el.textContent = count;
-            const poolEl = document.getElementById('pool-count');
-            if (poolEl) poolEl.textContent = window.staffPool.filter(s => !window.getAssignedIds().has(s.id)).length;
+            // 3. Swap or Place into supervisor
+            const sourceStaffId = activeSelectedSource.staffId;
+
+            if (activeSelectedSource.type === 'pool') {
+                window.clearStaffAssignment(sourceStaffId);
+                targetSup.staffId = sourceStaffId;
+            } else if (activeSelectedSource.type === 'row') {
+                const sourceRow = window.boardRows.find(r => r.id === activeSelectedSource.rowId);
+                if (sourceRow) {
+                    sourceRow.slots[activeSelectedSource.slotKey] = targetCurrentStaffId;
+                    targetSup.staffId = sourceStaffId;
+                }
+            } else if (activeSelectedSource.type === 'sup') {
+                const sourceSup = window.supervisorsData.find(s => s.id === activeSelectedSource.supId);
+                if (sourceSup) {
+                    sourceSup.staffId = targetCurrentStaffId;
+                    targetSup.staffId = sourceStaffId;
+                }
+            }
+
+            window.cancelStaffSelection();
+            window.refreshAllViews();
+            window.autoSync();
+            window.showNotification(`${label} の配置を更新しました。`);
         };
 
         // Render: Staff Pool
@@ -991,7 +1163,7 @@
             unassignedStaff.forEach(staff => {
                 if (query && !staff.name.toLowerCase().includes(query)) return;
 
-                const isSelected = activeSelectedStaffId === staff.id;
+                const isSelected = activeSelectedSource && activeSelectedSource.type === 'pool' && activeSelectedSource.staffId === staff.id;
                 const chip = document.createElement('div');
                 chip.draggable = true;
                 chip.ondragstart = (e) => window.dragStart(e, staff.id);
@@ -1014,59 +1186,6 @@
             });
 
             window.updateTotalCount();
-        };
-
-        // Handle Slot Touch or Click in Board
-        window.handleSlotInteraction = function(rowId, slotKey, label) {
-            if (!isEditMode) {
-                // If not in edit mode, prompt or open modal
-                window.openSlotSelect('row', rowId, slotKey, label);
-                return;
-            }
-
-            // In Edit Mode:
-            // 1. If a staff is already tapped and selected, place them immediately
-            if (activeSelectedStaffId) {
-                const targetRow = window.boardRows.find(r => r.id === rowId);
-                if (targetRow) {
-                    const existingStaffInSlot = targetRow.slots[slotKey];
-                    window.clearStaffAssignment(activeSelectedStaffId);
-                    targetRow.slots[slotKey] = activeSelectedStaffId;
-
-                    // If target slot already had someone, they automatically return to pool or swap
-                    window.cancelStaffSelection();
-                    window.refreshAllViews();
-                    window.autoSync();
-                    window.showNotification('配置を更新しました。');
-                    return;
-                }
-            }
-
-            // 2. If no staff was pre-selected, open modal to choose staff or clear
-            window.openSlotSelect('row', rowId, slotKey, label);
-        };
-
-        // Handle Supervisor Slot Interaction
-        window.handleSupervisorInteraction = function(supId, label) {
-            if (!isEditMode) {
-                window.openSlotSelect('sup', supId, '', label);
-                return;
-            }
-
-            if (activeSelectedStaffId) {
-                const targetSup = window.supervisorsData.find(s => s.id === supId);
-                if (targetSup) {
-                    window.clearStaffAssignment(activeSelectedStaffId);
-                    targetSup.staffId = activeSelectedStaffId;
-                    window.cancelStaffSelection();
-                    window.refreshAllViews();
-                    window.autoSync();
-                    window.showNotification(`${label} を配置しました。`);
-                    return;
-                }
-            }
-
-            window.openSlotSelect('sup', supId, '', label);
         };
 
         // Render: Assignment Board Rows
@@ -1093,11 +1212,12 @@
                 slotKeys.forEach(slotKey => {
                     const staffId = row.slots[slotKey];
                     const staff = window.staffPool.find(s => s.id === staffId);
-                    const isHighlightedSlot = isEditMode && activeSelectedStaffId;
+                    const isSlotSelected = activeSelectedSource && activeSelectedSource.type === 'row' && activeSelectedSource.rowId === row.id && activeSelectedSource.slotKey === slotKey;
+                    const canReceivePlacement = isEditMode && activeSelectedSource && !isSlotSelected;
 
                     html += `
                         <td class="p-1 border-r border-slate-200 text-center align-middle" ondragover="window.allowDrop(event)" ondrop="window.dropToSlot(event, '${row.id}', '${slotKey}')">
-                            <div class="board-slot-box rounded-xl border ${staff ? 'border-slate-300 bg-white shadow-sm' : 'border-dashed border-slate-300 bg-slate-50/70 hover:bg-blue-50/50'} ${isHighlightedSlot ? 'hover:bg-amber-50 hover:border-amber-400' : ''} cursor-pointer" onclick="window.handleSlotInteraction('${row.id}', '${slotKey}', '${row.machine}')">
+                            <div class="board-slot-box rounded-xl border ${isSlotSelected ? 'slot-selected' : staff ? 'border-slate-300 bg-white shadow-sm' : 'border-dashed border-slate-300 bg-slate-50/70 hover:bg-blue-50/50'} ${canReceivePlacement ? 'hover:bg-amber-100 hover:border-amber-400' : ''} cursor-pointer" onclick="window.handleSlotInteraction('${row.id}', '${slotKey}', '${row.machine}')">
                     `;
 
                     if (staff) {
@@ -1111,7 +1231,12 @@
                                 <div class="absolute bottom-0 inset-x-0 bg-slate-900/85 backdrop-blur-[2px] py-0.5 px-0.5 text-center z-10 border-t border-slate-700/40">
                                     <span class="text-[10px] font-bold text-white truncate block tracking-tight leading-tight">${staff.name}</span>
                                 </div>
-                                <button type="button" onclick="event.stopPropagation(); window.clearSlot('${row.id}', '${slotKey}')" title="枠から外す" class="absolute top-1 right-1 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-4 h-4 text-[9px] ${isEditMode ? 'opacity-90' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow z-20">
+                                ${isEditMode ? `
+                                    <span class="absolute top-1 left-1 bg-amber-500 text-slate-900 rounded-md px-1 text-[9px] font-black shadow z-20 flex items-center gap-0.5">
+                                        <i class="fa-solid fa-arrow-right-arrow-left text-[8px]"></i>
+                                    </span>
+                                ` : ''}
+                                <button type="button" onclick="event.stopPropagation(); window.clearSlot('${row.id}', '${slotKey}')" title="枠から外す" class="absolute top-1 right-1 bg-red-600/95 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] ${isEditMode ? 'opacity-100 ring-2 ring-white' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow-md z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
@@ -1119,7 +1244,7 @@
                     } else {
                         html += `
                             <span class="text-slate-300 group-hover:text-blue-500 text-[10px] font-bold flex flex-col items-center gap-0.5">
-                                <i class="fa-solid fa-plus text-[9px]"></i>${isEditMode && activeSelectedStaffId ? 'ここへ配置' : '配置'}
+                                <i class="fa-solid fa-plus text-[9px]"></i>${isEditMode && activeSelectedSource ? 'ここへ配置' : '配置'}
                             </span>
                         `;
                     }
@@ -1143,9 +1268,11 @@
 
             window.supervisorsData.forEach(sup => {
                 const staff = window.staffPool.find(s => s.id === sup.staffId);
+                const isSupSelected = activeSelectedSource && activeSelectedSource.type === 'sup' && activeSelectedSource.supId === sup.id;
+                const canReceive = isEditMode && activeSelectedSource && !isSupSelected;
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex flex-col items-center text-center shadow-sm relative";
+                card.className = `bg-slate-50 border ${isSupSelected ? 'border-amber-500 ring-2 ring-amber-400' : 'border-slate-200'} rounded-2xl p-2.5 flex flex-col items-center text-center shadow-sm relative`;
                 card.ondragover = window.allowDrop;
                 card.ondrop = (e) => window.dropToSupervisor(e, sup.id);
 
@@ -1160,21 +1287,26 @@
                     <span class="text-[11px] font-bold text-indigo-800 mb-1.5 flex items-center justify-center">
                         <i class="fa-solid fa-shield-halved mr-1 text-indigo-600"></i>${sup.title}
                     </span>
-                    <div class="w-full h-24 relative rounded-xl overflow-hidden bg-white border ${staff ? 'border-indigo-200 shadow-sm' : 'border-dashed border-slate-300 hover:border-indigo-400 cursor-pointer'} flex items-center justify-center" onclick="window.handleSupervisorInteraction('${sup.id}', '${sup.title}')">
+                    <div class="w-full h-24 relative rounded-xl overflow-hidden bg-white border ${isSupSelected ? 'slot-selected' : staff ? 'border-indigo-200 shadow-sm' : 'border-dashed border-slate-300 hover:border-indigo-400'} ${canReceive ? 'hover:bg-amber-100 hover:border-amber-400' : ''} cursor-pointer flex items-center justify-center" onclick="window.handleSupervisorInteraction('${sup.id}', '${sup.title}')">
                         ${staff ? `
                             <div draggable="true" ondragstart="window.dragStart(event, '${staff.id}')" class="w-full h-full relative group cursor-grab">
                                 ${avatarHtml}
                                 <div class="absolute bottom-0 inset-x-0 bg-slate-900/85 backdrop-blur-[2px] py-1 px-1 text-center z-10 border-t border-slate-700/50">
                                     <span class="text-xs font-bold text-white truncate block tracking-tight">${staff.name}</span>
                                 </div>
-                                <button type="button" onclick="event.stopPropagation(); window.clearSupervisor('${sup.id}')" class="absolute top-1.5 right-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] ${isEditMode ? 'opacity-90' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow z-20">
+                                ${isEditMode ? `
+                                    <span class="absolute top-1.5 left-1.5 bg-amber-500 text-slate-900 rounded-md px-1.5 py-0.5 text-[9px] font-black shadow z-20 flex items-center gap-1">
+                                        <i class="fa-solid fa-arrow-right-arrow-left text-[8px]"></i>入替
+                                    </span>
+                                ` : ''}
+                                <button type="button" onclick="event.stopPropagation(); window.clearSupervisor('${sup.id}')" class="absolute top-1.5 right-1.5 bg-red-600/95 hover:bg-red-600 text-white rounded-full w-5 h-5 text-[10px] ${isEditMode ? 'opacity-100 ring-2 ring-white' : 'opacity-0 group-hover:opacity-100'} transition flex items-center justify-center shadow-md z-20">
                                     <i class="fa-solid fa-xmark"></i>
                                 </button>
                             </div>
                         ` : `
                             <span class="text-slate-400 text-xs font-medium flex flex-col items-center gap-1">
                                 <i class="fa-solid fa-user-plus text-slate-300"></i>
-                                <span>${isEditMode && activeSelectedStaffId ? 'ここへ配置' : 'タップで配置'}</span>
+                                <span>${isEditMode && activeSelectedSource ? 'ここへ配置' : 'タップで配置'}</span>
                             </span>
                         `}
                     </div>
